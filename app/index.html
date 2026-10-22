@@ -21,34 +21,37 @@
     <link rel="stylesheet" href="worky-charakter.css" />
     <link rel="stylesheet" href="nacht.css" />
     <link rel="stylesheet" href="projekt.css" />
+    <link rel="stylesheet" href="arbeitsplatz.css" />
+    <link rel="stylesheet" href="start.css" />
     <script src="theme.js"></script>
   </head>
   <body>
-    <div class="wb-app">
-      <nav class="wb-rail" aria-label="Hauptnavigation">
-        <a class="wb-logo" href="#start" aria-label="Workflow – Start" title="Workflow"><span></span><span></span><span></span></a>
-        <a class="wb-rail-item active" href="#claude-chat" title="Worky – KI-Team"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg><span>Worky</span></a>
-        <a class="wb-rail-item" href="#start" title="Projekt"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span>Projekt</span></a>
-        <a class="wb-rail-item" href="#ideen" title="Ideen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg><span>Ideen</span></a>
-        <a class="wb-rail-item" href="#aufgaben" title="Aufgaben"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg><span>Aufgaben</span><b class="wb-badge" id="task-count">0</b></a>
-        <a class="wb-rail-item" href="#anfrage" title="Prompt-Ersteller"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h6M14 12h6M12 4v6M12 14v6"/><circle cx="12" cy="12" r="2"/></svg><span>Prompt</span></a>
-        <a class="wb-rail-item" href="#ki-team" title="KI-Team"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 20c.5-3 2.5-5 5-5s4.5 2 5 5M12 20c.5-3 2.5-5 5-5s4.5 2 5 5"/></svg><span>Team</span></a>
-        <a class="wb-rail-item" href="#werkzeuge" title="Werkzeuge &amp; Assets"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3 17.8V21h3.2l6.3-6.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg><span>Werkzeuge</span></a>
-        <a class="wb-rail-item" href="#obsidian" title="Obsidian-Tresor"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l8 5v10l-8 5-8-5V7z"/><path d="M12 22V12M20 7l-8 5-8-5"/></svg><span>Tresor</span></a>
-        <div class="wb-rail-foot"><span class="wb-rail-status" title="KI-Status"><i></i><small id="sidebar-ai-state">Claude noch offline</small></span><div class="avatar" title="Timo · Projektinhaber">T</div></div>
+    <div class="wb-app wf-app" id="wf-app">
+      <nav class="wf-side" aria-label="Projekt">
+        <button class="wf-back" type="button" data-alle-projekte><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Alle Projekte</button>
+        <button class="wf-project wb-project-switch" id="project-switch" type="button" title="Projekt wechseln oder hinzufügen"><span class="wf-project-mark" data-projekt-initial aria-hidden="true">?</span><span class="wf-project-text"><strong data-projekt-name>Kein Projekt</strong><small data-projekt-art>Projekt wählen</small></span><svg class="wb-project-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button>
+        <div class="wf-nav-list">
+          <button class="wf-nav active" type="button" data-bereich-knopf="worky" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H6l-3 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z"/></svg><span>Worky</span></button>
+          <button class="wf-nav" type="button" data-bereich-knopf="ideen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg><span>Ideen</span></button>
+          <button class="wf-nav" type="button" data-bereich-knopf="aufgaben"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg><span>Aufgaben</span><b class="wf-count" id="task-count">0</b></button>
+          <button class="wf-nav" type="button" data-bereich-knopf="aenderungen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v12M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 9a9 9 0 0 1-9 9"/></svg><span>Änderungen</span></button>
+          <button class="wf-nav" type="button" data-bereich-knopf="prompt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h6M14 12h6M12 4v6M12 14v6"/><circle cx="12" cy="12" r="2"/></svg><span>Prompt</span></button>
+          <button class="wf-nav" type="button" data-bereich-knopf="team"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 20c.5-3 2.5-5 5-5s4.5 2 5 5M12 20c.5-3 2.5-5 5-5s4.5 2 5 5"/></svg><span>KI-Team</span></button>
+          <button class="wf-nav" type="button" data-bereich-knopf="werkzeuge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3 17.8V21h3.2l6.3-6.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg><span>Werkzeuge</span></button>
+          <button class="wf-nav" type="button" data-bereich-knopf="tresor"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l8 5v10l-8 5-8-5V7z"/><path d="M12 22V12M20 7l-8 5-8-5"/></svg><span>Tresor</span></button>
+        </div>
+        <div class="wf-programs">
+          <span class="wf-programs-title">PROGRAMME</span>
+          <div class="tool-group" role="group" aria-label="Programme öffnen"><button class="quick-app-button" id="open-studio" type="button" title="Projekt in Roblox Studio öffnen" data-nur-roblox>Studio</button><button class="quick-app-button" id="open-rojo" type="button" title="Rojo-Server starten und mit Studio verbinden" data-nur-roblox>Rojo</button><button class="quick-app-button" id="open-obsidian" type="button" title="Obsidian-Tresor öffnen">Obsidian</button><button class="quick-app-button" id="open-blender" type="button" title="Blender öffnen">Blender</button><button class="quick-app-button" id="open-github" type="button" title="GitHub Desktop öffnen">GitHub</button></div>
+        </div>
+        <div class="wf-side-foot"><span class="wf-ai-state" title="KI-Status"><i></i><small id="sidebar-ai-state">Claude noch offline</small></span><button class="theme-toggle" id="theme-toggle" type="button" aria-pressed="false" aria-label="Nachtmodus einschalten" title="Nachtmodus einschalten"><svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg><svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button><span class="local-pill" title="Alles läuft nur auf deinem PC"><i></i>Lokal</span></div>
       </nav>
-
-      <header class="wb-command">
-        <button class="wb-project wb-project-switch" id="project-switch" type="button" title="Projekt wechseln oder hinzufügen"><span class="wb-project-mark" aria-hidden="true"></span><div><strong data-projekt-name>Kein Projekt</strong><small data-projekt-art>Projekt wählen</small></div><svg class="wb-project-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button>
-        <div class="wb-greeting"><span>Guten Tag, Timo</span></div>
-        <div class="tool-group" role="group" aria-label="Programme öffnen"><button class="quick-app-button" id="open-studio" type="button" title="Projekt in Roblox Studio öffnen" data-nur-roblox>Studio</button><button class="quick-app-button" id="open-rojo" type="button" title="Rojo-Server starten und mit Studio verbinden" data-nur-roblox>Rojo</button><button class="quick-app-button" id="open-obsidian" type="button" title="Obsidian-Tresor öffnen">Obsidian</button><button class="quick-app-button" id="open-blender" type="button" title="Blender öffnen">Blender</button><button class="quick-app-button" id="open-github" type="button" title="GitHub Desktop öffnen">GitHub</button></div>
-        <button class="theme-toggle" id="theme-toggle" type="button" aria-pressed="false" aria-label="Nachtmodus einschalten" title="Nachtmodus einschalten"><svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg><svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button><span class="local-pill" title="Alles läuft nur auf deinem PC"><i></i>Lokal</span>
-      </header>
 
       <main class="wb-bench">
         <section class="panel claude-chat-panel worky-mode" id="claude-chat" aria-labelledby="claude-chat-title">
           <div class="chat-header">
-            <div class="wb-chat-identity"><span class="worky-logo" aria-hidden="true"><i></i><i></i><i></i></span><div><span class="section-kicker">KI-ARBEITSFLÄCHE</span><h3 id="claude-chat-title">Mit <select id="chat-provider" aria-label="Chat-Partner"><option value="worky">✦ Worky (KI-Team)</option><option value="auto">Automatisch (eine passende KI)</option><option value="claude">Claude</option><option value="codex">Codex</option><option value="antigravity">Antigravity (Gemini)</option><option value="openrouter">Gratis-KI (OpenRouter)</option></select> schreiben</h3></div></div>
+            <div class="wb-chat-identity"><span class="worky-logo" aria-hidden="true"><i></i><i></i><i></i></span><div class="wf-chat-who"><h3 id="claude-chat-title"><span class="sr-only">Mit </span><select id="chat-provider" aria-label="Chat-Partner"><option value="worky">✦ Worky (KI-Team)</option><option value="auto">Automatisch (eine passende KI)</option><option value="claude">Claude</option><option value="codex">Codex</option><option value="antigravity">Antigravity (Gemini)</option><option value="openrouter">Gratis-KI (OpenRouter)</option></select></h3></div></div>
+            <div class="wf-chat-tools"><button class="wf-stop worky-stop" id="worky-stop" type="button" hidden>■ Stopp</button></div>
             <span class="chat-status" id="claude-status" data-state="offline"><i></i><span>Verbindung noch nicht eingerichtet</span></span>
             <p id="chat-provider-description">Worky ist dein Teamleiter: Kurze Fragen beantwortet er sofort (⚡ Schnell), Aufgaben gibt er einem seiner 16 Spezialisten (🔬 Gründlich). Die Antwort erscheint live. Gesendet wird erst nach deinem Klick.</p>
           </div>
@@ -84,24 +87,15 @@
             <div class="worky-attachments" id="worky-attachments" hidden aria-live="polite"></div>
             <label class="sr-only" for="claude-question">Deine Nachricht an Worky</label>
             <textarea id="claude-question" rows="3" maxlength="6000" placeholder="Schreib Worky, was du bauen willst …" disabled></textarea>
-            <div class="chat-compose-footer"><span id="chat-hint">Zum Start fehlen noch Node.js und Claude Code.</span><input id="worky-image-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden /><button class="tiny-action" id="worky-mic" type="button" hidden title="Sprechen statt tippen (Spracherkennung des Browsers)">🎤 Sprechen</button><button class="tiny-action" id="worky-attach" type="button" title="Screenshot oder Bild anhängen (auch Strg+V oder hineinziehen)">📎 Bild</button><button class="tiny-action" id="worky-new-chat" type="button" title="Verlauf leeren und einen neuen Chat beginnen">Neuer Chat</button><button class="outline-button worky-stop" id="worky-stop" type="button" hidden>■ Stopp</button><button class="primary-button" id="claude-send" type="submit" disabled>Senden <span>→</span></button></div>
+            <div class="chat-compose-footer"><span id="chat-hint">Zum Start fehlen noch Node.js und Claude Code.</span><input id="worky-image-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden /><button class="tiny-action" id="worky-mic" type="button" hidden title="Sprechen statt tippen (Spracherkennung des Browsers)">🎤 Sprechen</button><button class="tiny-action" id="worky-attach" type="button" title="Screenshot oder Bild anhängen (auch Strg+V oder hineinziehen)">📎 Bild</button><button class="tiny-action" id="worky-new-chat" type="button" title="Verlauf leeren und einen neuen Chat beginnen">Neuer Chat</button><button class="primary-button" id="claude-send" type="submit" disabled>Senden <span>→</span></button></div>
           </form>
-          <details class="wb-changes">
-            <summary><span>Projektänderungen</span><small>Git-Stand gegenüber dem letzten Commit · bleibt lokal</small></summary>
-            <section class="project-review" aria-labelledby="project-review-title">
-              <div class="project-review-heading"><div><strong id="project-review-title">Projektänderungen</strong><small>Gesamter Repo-Stand gegenüber dem letzten Commit, nicht nur der letzte Chat. Bleibt lokal und geht nicht an eine KI.</small></div><button class="outline-button" id="load-project-changes" type="button">Änderungen prüfen</button></div>
-              <div class="project-change-list" id="project-change-list" hidden aria-live="polite"></div>
-              <div class="project-diff-view" id="project-diff-view" hidden><div class="project-diff-heading"><strong id="project-diff-file"></strong><button class="tiny-action" id="project-diff-back" type="button">Zur Dateiliste</button></div><pre id="project-diff-content"></pre></div>
-            </section>
-          </details>
         </section>
       </main>
 
-      <aside class="wb-inspector" id="start" aria-label="Projekt-Inspektor">
-        <section class="wb-project-card">
-          <span class="hazard-strip" aria-hidden="true"></span>
-          <div class="hero-art" aria-hidden="true"><div class="sun-glow"></div><div class="factory"><div class="tower tower-one"><i></i><b></b></div><div class="tower tower-two"><i></i><b></b></div><div class="tower tower-three"><i></i><b></b></div><div class="factory-body"><div class="roof"></div><div class="windows"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="door"></div></div><div class="belt"></div></div><div class="art-grid"></div></div>
-          <div class="wb-project-copy"><span class="hero-kicker"><span class="pulse-dot"></span> DEIN PROJEKT</span><h2>Vom Schuppen zum <em>Imperium.</em></h2><p>Jede Idee bleibt eine Idee, bis du sie selbst freigibst.</p></div>
+      <aside class="wb-inspector wf-drawer" id="start" aria-label="Projekt-Bereich" aria-labelledby="wf-drawer-title">
+        <div class="wf-drawer-head"><h2 id="wf-drawer-title">Ideen</h2><button class="close-button" type="button" data-bereich-schliessen aria-label="Bereich schließen" title="Zurück zu Worky">×</button></div>
+        <section class="wb-project-card" data-bereich="ideen aufgaben">
+          <div class="wb-project-copy"><span class="hero-kicker"><span class="pulse-dot"></span> DEIN PROJEKT</span><h2 data-projekt-name>Kein Projekt</h2><p data-projekt-beschreibung>Jede Idee bleibt eine Idee, bis du sie selbst freigibst.</p></div>
           <div class="stats-grid" aria-label="Projektübersicht">
             <article class="stat-card"><div class="stat-top"><span>AUFGABEN</span></div><strong id="active-stat">0</strong><small>Entwürfe + freigegeben</small></article>
             <article class="stat-card"><div class="stat-top"><span>IDEEN</span></div><strong id="idea-stat">0</strong><small>noch nicht freigegeben</small></article>
@@ -110,7 +104,7 @@
           <button class="primary-button wb-new-idea" id="new-idea-top"><span>＋</span> Neue Idee festhalten</button>
         </section>
 
-        <details class="wb-section" open>
+        <details class="wb-section" data-bereich="ideen" open>
           <summary><span>Ideen</span><small>Parkplatz für gute Gedanken</small></summary>
           <div class="panel ideas-panel" id="ideen">
             <div class="panel-heading"><div><span class="section-kicker">PARKPLATZ FÜR GUTE GEDANKEN</span><h3>Ideen &amp; Aufgaben</h3></div><button class="quiet-button" id="new-idea-inline">＋ Idee erfassen</button></div>
@@ -120,7 +114,7 @@
           </div>
         </details>
 
-        <details class="wb-section" open>
+        <details class="wb-section" data-bereich="aufgaben" open>
           <summary><span>Aufgaben</span><small>Du gibst den Takt an</small></summary>
           <div class="panel tasks-panel" id="aufgaben">
             <div class="panel-heading"><div><span class="section-kicker">DU GIBST DEN TAKT AN</span><h3>Aufgaben</h3></div><span class="task-total" id="task-total">0 Aufgaben</span></div>
@@ -130,7 +124,7 @@
           </div>
         </details>
 
-        <details class="wb-section">
+        <details class="wb-section" data-bereich="prompt">
           <summary><span>Prompt-Ersteller</span><small>Sag, was du willst – bekomm einen fertigen Prompt</small></summary>
           <section class="panel router-panel prompt-builder" id="anfrage">
             <div class="router-header"><div><span class="section-kicker">PROMPT-ERSTELLER</span><h3>Was willst du machen?</h3><p>Beschreib es in deinen Worten. Claude macht daraus einen ausführlichen Prompt für das Ziel, das du wählst. Es wird nichts gebaut oder geändert.</p></div></div>
@@ -152,7 +146,7 @@
           </section>
         </details>
 
-        <details class="wb-section">
+        <details class="wb-section" data-bereich="team">
           <summary><span>KI-Team</span><small>Claude · Codex · Gemini · Gratis-KI</small></summary>
           <section class="panel team-panel" id="ki-team"><div class="panel-heading compact"><div><span class="section-kicker">DEINE DENKPARTNER</span><h3>KI-Team</h3></div><span class="offline-tag" id="claude-provider-status"><i></i> Claude offline</span></div><p class="panel-description">Claude, Codex, Gemini (Antigravity) und die Gratis-KI sind im Chat verbunden. Worky lässt sie als Team zusammenarbeiten.</p>
             <div class="provider-list"><div class="provider"><span class="provider-logo claude">C</span><span><strong>Claude</strong><small>Spielcode verstehen &amp; planen</small></span><span class="provider-state">Max</span></div><div class="provider"><span class="provider-logo gemini">✦</span><span><strong>Gemini</strong><small>Zusätzliche Ideen &amp; Perspektiven</small></span><span class="provider-state">Antigravity</span></div><div class="provider"><span class="provider-logo codex">⌘</span><span><strong>Codex</strong><small>Codevorschläge &amp; Prüfung</small></span><span class="provider-state" id="codex-provider-state">wird geprüft …</span></div><div class="provider"><span class="provider-logo chatgpt">◉</span><span><strong>ChatGPT Images</strong><small>UI- und Maschinenkonzepte</small></span><span class="provider-state image-state">Bilder</span></div></div>
@@ -160,7 +154,7 @@
           </section>
         </details>
 
-        <details class="wb-section">
+        <details class="wb-section" data-bereich="werkzeuge">
           <summary><span>Werkzeuge &amp; Assets</span><small>Design, 3D, Texturen, Sounds</small></summary>
           <div class="worky-tools">
             <strong>Macht Worky direkt</strong><small>Klick füllt das Eingabefeld, du ergänzt, was du willst. Erzeugen und Einfügen nur mit Freigabe-Karte.</small>
@@ -184,12 +178,18 @@
           </div>
         </details>
 
-        <details class="wb-section" open>
+        <details class="wb-section" data-bereich="tresor" open>
           <summary><span>Obsidian-Tresor</span><small>Gemeinsames Gehirn</small></summary>
           <section class="obsidian-card" id="obsidian"><div class="obsidian-heading"><span class="obsidian-mark">◈</span><div><span class="section-kicker">GEMEINSAMES GEHIRN</span><h3>Obsidian-Tresor</h3></div></div><p>Verbinde deinen Tresor einmal. Die Auswahl bleibt lokal im Browser gespeichert; passende Markdown-Notizen werden vor jeder Chatfrage durchsucht. An die KI gehen nur relevante Ausschnitte. Aufgaben schreibt die Werkstatt erst nach Vorschau und deiner Freigabe in eine eigene Notiz.</p><div class="obsidian-actions"><button class="vault-button" id="connect-vault">Tresor lokal wählen <span>⌂</span></button><button class="vault-button" id="check-vault">Tresor prüfen <span>✓</span></button><button class="vault-button" id="save-vault" disabled>Aufgaben in Obsidian <span>↓</span></button><button class="vault-button" id="import-markdown">Notiz importieren <span>↑</span></button><button class="vault-button" id="export-markdown">Markdown exportieren <span>⇩</span></button><input id="markdown-file" type="file" accept=".md,text/markdown,text/plain" hidden /></div><small class="vault-note" id="vault-note">Noch kein Tresor ausgewählt. Der Browser fragt dich erst beim Auswählen nach Zugriff.</small></section>
         </details>
-
-        <footer class="page-footer"><span><i class="footer-dot"></i> Dein Projekt bleibt auf deinem PC</span><span>IDEEN BLEIBEN IDEEN</span></footer>
+          <details class="wb-section wb-changes" data-bereich="aenderungen">
+            <summary><span>Änderungen</span><small>Git-Stand gegenüber dem letzten Commit · bleibt lokal</small></summary>
+            <section class="project-review" aria-labelledby="project-review-title">
+              <div class="project-review-heading"><div><strong id="project-review-title">Projektänderungen</strong><small>Gesamter Repo-Stand gegenüber dem letzten Commit, nicht nur der letzte Chat. Bleibt lokal und geht nicht an eine KI.</small></div><button class="outline-button" id="load-project-changes" type="button">Änderungen prüfen</button></div>
+              <div class="project-change-list" id="project-change-list" hidden aria-live="polite"></div>
+              <div class="project-diff-view" id="project-diff-view" hidden><div class="project-diff-heading"><strong id="project-diff-file"></strong><button class="tiny-action" id="project-diff-back" type="button">Zur Dateiliste</button></div><pre id="project-diff-content"></pre></div>
+            </section>
+          </details>
       </aside>
     </div>
 
@@ -206,5 +206,7 @@
     <script src="claude-chat.js"></script>
     <script src="project-changes.js"></script>
     <script src="approvals.js"></script>
+    <script src="arbeitsplatz.js"></script>
+    <script src="start.js"></script>
   </body>
 </html>

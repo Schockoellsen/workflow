@@ -17,6 +17,9 @@
     document.title = project ? `${project.name} · Workflow` : 'Workflow';
     for (const element of document.querySelectorAll('[data-projekt-name]')) element.textContent = project ? project.name : 'Kein Projekt';
     for (const element of document.querySelectorAll('[data-projekt-art]')) element.textContent = project ? `${project.kindLabel} · Workflow` : 'Projekt wählen';
+    for (const element of document.querySelectorAll('[data-projekt-initial]')) element.textContent = project ? project.name.trim().charAt(0).toUpperCase() : '?';
+    for (const element of document.querySelectorAll('[data-projekt-beschreibung]')) if (project?.description) element.textContent = project.description;
+    if (project) document.documentElement.dataset.projektArt = project.kind;
     // Studio und Rojo gibt es nur bei Roblox-Projekten
     for (const element of document.querySelectorAll('[data-nur-roblox]')) element.hidden = project?.kind !== 'roblox';
 
@@ -104,8 +107,8 @@
         location.reload();
       } catch (error) { say(error.message, true); }
     });
-    // Ohne Projekt geht nichts: Auswahl gleich zeigen
-    if (!project) void openDialog();
+    // Für die Projektseite (start.js): Dialog öffnen, auf Wunsch gleich mit „Projekt hinzufügen“
+    window.workflowOpenProjects = async (add = false) => { await openDialog(); if (add) { addBox.open = true; document.querySelector('#project-name')?.focus(); } };
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
