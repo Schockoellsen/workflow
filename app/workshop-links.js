@@ -16,7 +16,7 @@ async function openWorkshopApp(button, endpoint, label) {
 }
 
 document.querySelector('#open-studio').addEventListener('click', (event) => {
-  void openWorkshopApp(event.currentTarget, '/api/open/studio', 'Industrial Empire in Roblox Studio');
+  void openWorkshopApp(event.currentTarget, '/api/open/studio', `${window.workflowProject?.name || 'Projekt'} in Roblox Studio`);
 });
 
 document.querySelector('#open-rojo').addEventListener('click', async (event) => {

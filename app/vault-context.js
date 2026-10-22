@@ -1,5 +1,6 @@
 (() => {
-  const DB_NAME = 'industrial-empire-workshop-vault';
+  // Tresor-Ordner je Projekt merken
+  const DB_NAME = window.workflowKey('workflow-tresor');
   const STORE_NAME = 'handles';
   const HANDLE_KEY = 'active-vault';
   const MAX_FILES = 600;

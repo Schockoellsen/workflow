@@ -1,0 +1,26 @@
+/* Projekt-Auswahl (Workflow Paket 1): Knopf oben links und Dialog „Deine Projekte“ */
+.wb-project-switch{border:0;background:transparent;font:inherit;color:inherit;text-align:left;cursor:pointer;border-radius:12px;padding:6px 10px 6px 6px;margin:-6px 0 -6px -6px;display:flex;align-items:center;gap:10px}
+.wb-project-switch:hover{background:var(--ls-raised,#eef0f7)}
+.wb-project-switch:focus-visible{outline:2px solid var(--ls-accent,#5b5fd6);outline-offset:2px}
+.wb-project-caret{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;opacity:.6}
+.project-dialog{width:min(560px,calc(100vw - 32px))}
+.project-list{display:flex;flex-direction:column;gap:8px;margin:14px 0 6px}
+.project-row{display:flex;gap:6px;align-items:stretch}
+.project-open{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;text-align:left;font:inherit;color:var(--ls-text,#1d2236);background:var(--ls-panel-2,#f8f9fc);border:1px solid var(--ls-line,#e6e8f0);border-radius:12px;padding:12px 14px;cursor:pointer;min-height:44px}
+.project-open:hover:not(:disabled){border-color:var(--ls-accent,#5b5fd6)}
+.project-open[aria-current="true"]{border:2px solid var(--ls-accent,#5b5fd6);background:var(--ls-accent-soft,#eef0ff)}
+.project-open:disabled{opacity:.55;cursor:not-allowed}
+.project-open strong{font-size:15px}
+.project-open small{color:var(--ls-muted,#6a7189);font-size:12px}
+.project-folder{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.project-remove{width:44px;flex:none;border:1px solid var(--ls-line,#e6e8f0);background:transparent;color:var(--ls-muted,#6a7189);border-radius:12px;font-size:20px;cursor:pointer}
+.project-remove:hover{color:var(--ls-err,#d63c4a);border-color:var(--ls-err,#d63c4a)}
+.project-empty{color:var(--ls-muted,#6a7189);margin:4px 0}
+.project-message{min-height:18px;font-size:13px;margin:6px 0;color:var(--ls-text-2,#4b5269)}
+.project-message[data-state="error"]{color:var(--ls-err,#d63c4a)}
+.project-add{border-top:1px solid var(--ls-line,#e6e8f0);padding-top:12px;margin-top:6px}
+.project-add summary{cursor:pointer;font-weight:600;min-height:32px;display:flex;align-items:center}
+.project-add label{display:block;margin:12px 0 6px;font-size:13px}
+.project-add label span{color:var(--ls-muted,#6a7189)}
+.project-add input,.project-add select{width:100%;box-sizing:border-box;min-height:42px;padding:9px 12px;border-radius:10px;border:1px solid var(--ls-line-2,#dcdfea);background:var(--ls-well,#ffffff);color:var(--ls-text,#1d2236);font:inherit}
+.project-hint{display:block;margin-top:4px;color:var(--ls-muted,#6a7189);font-size:12px}

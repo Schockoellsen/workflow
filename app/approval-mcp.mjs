@@ -6,7 +6,7 @@
 
 import { createInterface } from 'node:readline';
 
-const SERVER = process.env.IE_WORKSHOP_URL || 'http://127.0.0.1:4173';
+const SERVER = process.env.IE_WORKSHOP_URL || 'http://127.0.0.1:4180';
 const TOKEN = process.env.IE_APPROVAL_TOKEN || '';
 const PROVIDER = process.env.IE_APPROVAL_PROVIDER || 'Claude';
 const TOOL_NAME = 'freigabe';
@@ -61,7 +61,7 @@ async function handle(message) {
       result: {
         tools: [{
           name: TOOL_NAME,
-          description: 'Fragt Timo in der IE Werkstatt, ob eine Aktion erlaubt ist. Wird von Claude Code automatisch benutzt.',
+          description: 'Fragt Timo in Workflow, ob eine Aktion erlaubt ist. Wird von Claude Code automatisch benutzt.',
           inputSchema: {
             type: 'object',
             properties: { tool_name: { type: 'string' }, input: { type: 'object' }, tool_use_id: { type: 'string' } },

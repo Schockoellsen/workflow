@@ -25,7 +25,8 @@ let chatBusy = false;
 // Stufe 4: laufende Worky-Anfrage abbrechen und Worky-Chat im Browser merken (localStorage, nur dieser PC)
 let workyAbort = null;
 // Mehrere Chats (z. B. „Presse“, „Höhle“): je Chat Verlauf und Claude-Sitzung, höchstens 30 Chats à 60 Nachrichten
-const WORKY_CHATS_KEY = 'ie-worky-chats-v2';
+// Je Projekt eigene Chats (Claude-Sitzungen gehören zum Projektordner)
+const WORKY_CHATS_KEY = window.workflowKey('ie-worky-chats-v2');
 const WORKY_CHAT_MAX = 60;
 const WORKY_CHATS_KEEP = 30;
 let workyHistory = [];
@@ -927,7 +928,7 @@ async function checkClaudeBridge() {
       setClaudeStatus('offline', state.message);
     }
   } catch {
-    chatHint.textContent = 'Starte node server.mjs im Werkstatt-Ordner und öffne danach http://127.0.0.1:4173.';
+    chatHint.textContent = 'Starte Workflow mit Start-Workflow.bat und öffne danach http://127.0.0.1:4180.';
     setClaudeStatus('offline', 'Lokale Verbindung nicht gestartet');
   }
 }
@@ -1008,7 +1009,7 @@ providerSelect.addEventListener('change', () => {
     : activeProvider === 'auto'
       ? 'Die Werkstatt wählt pro Nachricht die passende KI (Code → Codex, Planung und Erklärungen → Claude) und sagt dir, wer antwortet.'
       : 'Claude kann Projektdateien im Repo bearbeiten. Befehle sind gesperrt; Roblox Studio ändern nur nach deiner Freigabe.';
-  claudeQuestion.placeholder = `Schreib ${label} eine Frage zu Industrial Empire …`;
+  claudeQuestion.placeholder = `Schreib ${label}, was du bauen willst …`;
   document.querySelector('label[for="claude-question"]').textContent = `Deine Nachricht an ${label}`;
   claudeQuestion.disabled = !ready;
   claudeSend.disabled = !ready;

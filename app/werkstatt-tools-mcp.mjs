@@ -5,7 +5,7 @@
 
 import { createInterface } from 'node:readline';
 
-const SERVER = process.env.IE_WORKSHOP_URL || 'http://127.0.0.1:4173';
+const SERVER = process.env.IE_WORKSHOP_URL || 'http://127.0.0.1:4180';
 const TOKEN = process.env.IE_APPROVAL_TOKEN || '';
 
 function send(message) {

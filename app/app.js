@@ -1,5 +1,6 @@
-const IDEA_KEY = 'industrial-empire-workshop-ideas-v1';
-const TASK_KEY = 'industrial-empire-workshop-tasks-v1';
+// Ideen und Aufgaben je Projekt getrennt
+const IDEA_KEY = window.workflowKey('workflow-ideen-v1');
+const TASK_KEY = window.workflowKey('workflow-aufgaben-v1');
 const dialog = document.querySelector('#idea-dialog');
 const planDialog = document.querySelector('#plan-dialog');
 const form = document.querySelector('#idea-form');
@@ -172,7 +173,7 @@ function buildVaultManagedSection() {
   });
   return [
     VAULT_START_MARKER,
-    '## Industrial Empire — Werkstatt-Aufgaben',
+    `## ${window.workflowProject?.name || 'Projekt'} — Werkstatt-Aufgaben`,
     '> Dieser Abschnitt wird von der lokalen Werkstatt verwaltet. Planfreigabe bedeutet nicht, dass Spielcode geändert wurde.',
     '',
     entries.join('\n\n') || 'Noch keine freigegebenen Aufgaben.',
@@ -391,7 +392,7 @@ document.querySelector('#check-vault').addEventListener('click', async (event) =
       return;
     }
     document.querySelector('#vault-note').textContent = `Prüfe „${handle.name}“ lokal. Es werden keine Notizinhalte an eine KI gesendet …`;
-    const result = await window.IEVaultContext.relevantNotes('Industrial Empire Werkstatt Fehlerbehebung');
+    const result = await window.IEVaultContext.relevantNotes('Werkstatt Fehlerbehebung');
     if (result.reason === 'permission') {
       document.querySelector('#vault-note').textContent = 'Der Browser hat den Lesezugriff nicht erteilt. Wähle den Tresor erneut.';
       return;

@@ -56,7 +56,7 @@ loadProjectChanges.addEventListener('click', async () => {
   loadProjectChanges.textContent = 'Lese Git-Status …';
   projectDiffView.hidden = true;
   projectChangeList.hidden = false;
-  showProjectChangeMessage('Lese lokale Änderungen im Industrial-Empire-Repo …');
+  showProjectChangeMessage('Lese lokale Änderungen im Projektordner …');
   try {
     const response = await fetch('/api/project/changes');
     const result = await response.json();

@@ -23,19 +23,19 @@ function chooseProvider(question) {
     provider: 'Codex', key: 'codex', symbol: '⌘',
     reason: 'Du fragst nach Luau, Code oder einer Umsetzung. Codex ist für den konkreten Codevorschlag vorgeschlagen; Claude kann als Zweitprüfer dienen.',
     second: 'Claude — prüft, ob der Vorschlag zum bestehenden Spiel passt.',
-    role: 'Untersuche den Auftrag im bestehenden Industrial-Empire-Projekt. Lies zuerst relevante Dateien und docs/Technik.md. Erstelle zunächst nur einen Plan mit betroffenen Pfaden, vorgeschlagenen Änderungen, geschützter Spiellogik, Risiken, Prüfung und Rückweg. Ändere keine Dateien und führe keine Skripte, Builds oder Tests aus. Warte auf ausdrückliche Freigabe.'
+    role: 'Untersuche den Auftrag im bestehenden Projekt. Lies zuerst relevante Dateien und docs/Technik.md. Erstelle zunächst nur einen Plan mit betroffenen Pfaden, vorgeschlagenen Änderungen, geschützter Spiellogik, Risiken, Prüfung und Rückweg. Ändere keine Dateien und führe keine Skripte, Builds oder Tests aus. Warte auf ausdrückliche Freigabe.'
   };
   if (ideaIntent) return {
     provider: 'Claude', key: 'claude', symbol: 'C',
     reason: 'Du planst eine Spielidee oder ein System. Claude kennt den bisherigen Projektkontext; Gemini kann anschließend eine zweite Perspektive liefern.',
     second: 'Gemini — optionale zweite Meinung zu Alternativen und Spielerlebnis.',
-    role: 'Hilf, die Idee verständlich und passend zu Industrial Empire zu planen. Nutze die vorhandene Vision, Roadmap und passenden Obsidian-Notizen. Trenne klar zwischen vorhandenem Code, Empfehlung und Vermutung. Bewahre bestehende Spiellogik. Erstelle Aufgaben nur als Entwürfe; ändere keine Dateien und warte auf Freigabe.'
+    role: 'Hilf, die Idee verständlich und passend zum Projekt zu planen. Nutze die vorhandene Vision, Roadmap und passenden Obsidian-Notizen. Trenne klar zwischen vorhandenem Code, Empfehlung und Vermutung. Bewahre bestehende Spiellogik. Erstelle Aufgaben nur als Entwürfe; ändere keine Dateien und warte auf Freigabe.'
   };
   return {
     provider: 'Claude', key: 'claude', symbol: 'C',
     reason: 'Für eine allgemeine Frage zum vorhandenen Spiel passt Claude als erklärender Tutor. Gemini kann bei Bedarf eine zweite Erklärung geben.',
     second: 'Gemini — optionale alternative Erklärung.',
-    role: 'Erkläre deine Antwort in einfachem Deutsch und beziehe sie auf Industrial Empire. Trenne direkte Belege aus Projektdateien von Empfehlungen und Vermutungen. Erkläre Fachbegriffe. Ändere keine Dateien und führe keine Skripte oder Tests aus.'
+    role: 'Erkläre deine Antwort in einfachem Deutsch und beziehe sie auf das Projekt. Trenne direkte Belege aus Projektdateien von Empfehlungen und Vermutungen. Erkläre Fachbegriffe. Ändere keine Dateien und führe keine Skripte oder Tests aus.'
   };
 }
 
