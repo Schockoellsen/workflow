@@ -11,6 +11,9 @@ import { fileURLToPath } from 'node:url';
 import { createProjectFiles } from './vorlagen.mjs';
 import { createLearning } from './lernen.mjs';
 import { createTestCopy } from './testkopie.mjs';
+import { createTools } from './werkzeuge.mjs';
+import { createBackups } from './sicherung.mjs';
+import { createOwnTemplates } from './eigene-vorlagen.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 // ===== Projekte: Workflow arbeitet immer im gerade gewählten Projekt =====
@@ -46,6 +49,10 @@ const GIT_COMMAND = process.env.IE_WORKSHOP_GIT || (process.env.ProgramFiles
   ? path.join(process.env.ProgramFiles, 'Git', 'cmd', 'git.exe')
   : 'git');
 const HOST = '127.0.0.1';
+// Worky-Werkzeuge (Ausbau 2026-10-22): Roblox-Doku, Lune, Browser-Spiel-Test, Godot; Sicherung; eigene Vorlagen
+const tools = createTools({ dataDir: DATA_DIR, gitCommand: GIT_COMMAND });
+const backups = createBackups({ dataDir: DATA_DIR, appDir: HERE });
+const ownTemplates = createOwnTemplates({ dataDir: DATA_DIR, gitCommand: GIT_COMMAND, slug: (name, taken) => projectSlug(name, taken) });
 // Eigener Port, damit die alte IE Werkstatt (4173) während des Umzugs parallel laufen kann
 const PORT = Number(process.env.WORKFLOW_PORT || 4180);
 const SERVER_STARTED_AT = Date.now();
@@ -89,14 +96,14 @@ const CLAUDE_STUDIO_READ_TOOLS = [
   'mcp__blender__get_screenshot_of_window_as_json', 'mcp__blender__jump_to_tab_by_name',
   'mcp__blender__jump_to_tab_by_space_type', 'mcp__blender__jump_to_view3d_object_by_name',
   'mcp__blender__jump_to_view3d_object_data_by_name', 'mcp__blender__search_api_docs', 'mcp__blender__search_manual_docs',
-  // Werkstatt-Werkzeuge (nur lesen)
-  'mcp__werkstatt_tools__sound_suche'
+  // Werkstatt-Werkzeuge (nur lesen bzw. Tests ohne Fenster: Browser-Spiel, Godot, Lune)
+  'mcp__werkstatt_tools__sound_suche', 'mcp__werkstatt_tools__spiel_testen', 'mcp__werkstatt_tools__godot_testen', 'mcp__werkstatt_tools__rechen_tests'
 ];
 // Voll-Modus (Worky = Claude Code): ohne Rückfrage erlaubt. Alles andere (andere Befehle, Studio ändern …) → Freigabe-Karte.
 // SPERRE-ANFANG (Worky darf diesen Abschnitt in der Testkopie nicht ändern, siehe testkopie.mjs)
 const CLAUDE_FULL_ALLOWED_TOOLS = [
   'Read', 'Glob', 'Grep', 'Edit', 'Write', 'Agent', 'Task', 'Skill', 'TodoWrite', 'WebSearch',
-  'Bash(sh tools/check_all.sh)', 'Bash(sh tools/check_modules.sh)', 'Bash(sh tools/codepruefung.sh:*)', 'Bash(sh tools/codepruefung.sh)', 'Bash(sh tools/preview/machine.sh:*)', 'Bash(sh tools/preview/cave.sh:*)', 'Bash(sh tools/balance/tabelle.sh:*)', 'Bash(sh tools/balance/simulation.sh:*)',
+  'Bash(sh tools/check_all.sh)', 'Bash(sh tools/check_modules.sh)', 'Bash(sh tools/codepruefung.sh:*)', 'Bash(sh tools/codepruefung.sh)', 'Bash(sh tools/preview/machine.sh:*)', 'Bash(sh tools/preview/cave.sh:*)', 'Bash(sh tools/balance/tabelle.sh:*)', 'Bash(sh tools/balance/simulation.sh:*)', 'Bash(lune run:*)',
   'Bash(git status:*)', 'Bash(git diff:*)', 'Bash(git log:*)', 'Bash(git show:*)',
   // GitHub nur ansehen (seit 2026-10-21, Timo ist mit der GitHub CLI angemeldet)
   'Bash(echo:*)', 'Bash(git fetch:*)', 'Bash(git branch:*)', 'Bash(git ls-remote:*)',
@@ -132,9 +139,34 @@ function workshopFullRules() {
   'Checkliste: Arbeitest du einen Auftrag mit mehreren Schritten ab, führe die Schritte als Aufgabenliste (TaskCreate/TaskUpdate bzw. TodoWrite, kurze deutsche Punkte) und halte den Status aktuell. Timo sieht die Liste live.',
   ...(roblox ? ['Sounds: Mit dem Werkzeug sound_suche findest du lizenzfreie Geräusche auf Freesound (englische Suchbegriffe). Zeig Timo die besten 3 mit Vorschau-Link (Workflow spielt mp3-Links direkt ab) und Lizenz. Für das Spiel nur CC0. Herunterladen und bei Roblox hochladen macht Timo; danach baust du die Asset-ID von ihm ein (Skill sound-einbauen).'] : []),
   'UI-Entwurf: Will Timo sehen, wie ein Fenster oder HUD aussehen wird, bevor gebaut wird, schreib einen statischen Entwurf als eine HTML-Datei (nur HTML und CSS im style-Tag, kein JavaScript, keine externen Dateien; Bilder höchstens als data:-URL) nach den Farben und Formen aus dem Designsystem des Projekts (z. B. docs/Designsystem.md), mit echten deutschen Texten, in den Ordner entwuerfe/ im Projekt (entwuerfe/<kurzer-name>.html), und nenne in deiner Antwort den Pfad /entwuerfe/<kurzer-name>.html. Workflow zeigt ihn direkt als Vorschau. Erst nach Timos OK richtig bauen' + (roblox ? ' (Skill ui-bauen).' : '.'),
+  ...workshopToolRules(),
   ...(roblox ? ['Selbsttest: Hast du Spielcode (src/) geändert und ist Roblox Studio verbunden, teste die Änderung danach selbst mit dem Skill selbsttest (Play über Freigabe-Karte, Konsole filtern, gezielt messen, Play stoppen) und berichte mit ✅/❌. Läuft Play schon (Timo spielt), nur die Konsole lesen und fragen.'] : []),
   'Am Ende jeder Aufgabe: was du geändert hast, was dein Selbsttest ergeben hat, was Timo noch selbst testen muss (Gefühl, Optik) und was noch offen ist.'
   ].join('\n');
+}
+
+// Regeln zu den Werkzeugen aus dem Ausbau 2026-10-22, je nach Projektart und was installiert ist
+function workshopToolRules() {
+  const kind = PROJECT?.kind;
+  const rules = ['Prüfen nach jeder Änderung: Nach jedem Edit/Write prüft Workflow die Datei automatisch (JavaScript, JSON, Luau-Syntax, selene-Fehler). Meldet die Prüfung einen Fehler, behebe ihn sofort, bevor du weitermachst.'];
+  if (kind === 'roblox' && tools.docsReady()) {
+    rules.push(`Roblox-Doku: Die offizielle Roblox-Doku liegt lokal unter ${tools.docsFolder()} (Anleitungen als Markdown, API-Referenz als YAML in reference/engine/classes, datatypes, enums). Bist du bei einer Roblox-API unsicher (Eigenschaft, Methode, Event, Enum, Grenzwert), such dort mit Grep nach, statt zu raten, und nenne die Stelle.`);
+  }
+  if ((kind === 'roblox' || kind === 'andere') && tools.luneReady()) {
+    rules.push('Rechen-Tests ohne Studio: Lune ist installiert („lune run tests/<datei>.luau“ ist erlaubt, alle Tests auf einmal mit dem Werkzeug rechen_tests). Reine Rechen-Logik (Preise, Produktion, Wirtschaft, Umwandlung von Spielständen) testest du so: Test-Datei tests/<thema>.test.luau, die das Modul mit relativem Pfad lädt (require("../src/shared/…")) und bei falschem Ergebnis error("…") wirft. Lune kennt kein game, workspace oder script.Parent: Module, die Roblox-Dienste brauchen, nicht so testen. Nach Änderungen an solcher Logik die Tests laufen lassen.');
+  }
+  if (kind === 'web') {
+    rules.push('Browser-Spiel-Selbsttest: Nach Änderungen am Spiel ruf das Werkzeug spiel_testen auf (lädt das Spiel ohne Fenster in Edge, liefert Bild und Konsole). Rote Konsolen-Fehler sofort beheben und prüfen, ob auf dem Bild wirklich etwas zu sehen ist. Für Vorher/Nachher bei Optik-Änderungen: vorher und nachher spiel_testen.');
+  }
+  if (kind === 'godot') {
+    rules.push(tools.godotReady()
+      ? 'Godot-Selbsttest: Das Werkzeug godot_testen startet das Projekt ohne Fenster für ein paar Sekunden und liefert Fehler (Skriptfehler, fehlende Dateien). Nach Änderungen an Skripten oder Szenen aufrufen und Fehler gleich beheben.'
+      : 'Godot ist in Workflow noch nicht eingerichtet (Werkzeuge-Seite, Pfad zur Godot-Datei): Testen macht Timo im Godot-Editor.');
+  }
+  if (kind === 'roblox') {
+    rules.push('Vorher/Nachher bei Optik-Änderungen (Welt, Maschinen, Licht, Effekte, UI): Feste Fotopunkte stehen in docs/Fotopunkte.md (Name, Kamera-CFrame, was man sieht). Fehlt die Datei, leg sie mit 4 bis 6 sinnvollen Punkten an (z. B. aus der aktuellen Studio-Kamera). Ist Studio verbunden, vor der Änderung die betroffenen Punkte fotografieren (Kamera per Studio-Code setzen, das geht über die Freigabe-Karte; dann screen_capture) und danach dieselben Punkte noch einmal. In der Antwort sagen, welches Bild vorher und welches nachher ist; Workflow zeigt sie nebeneinander.');
+  }
+  return rules;
 }
 
 // ===== Freigaben: Claude fragt über approval-mcp.mjs, Timo entscheidet in der Werkstatt =====
@@ -518,6 +550,7 @@ function runClaude(args, input = '', timeoutMs = 120_000, onLine = null, signal 
     const child = spawn(CLAUDE_COMMAND, args, {
       signal,
       cwd,
+      env: tools.pathEnv(),
       shell: process.platform === 'win32' && CLAUDE_COMMAND.toLowerCase().endsWith('.cmd'),
       windowsHide: true,
       stdio: ['pipe', 'pipe', 'pipe']
@@ -718,14 +751,20 @@ const checkpoints = new Map();
 
 // Chats überleben einen Neustart der Werkstatt: bekannte Claude-Sitzungen in einer lokalen Datei (nicht im Repo)
 const WORKSHOP_STATE_FILE = path.join(HERE, '.werkstatt-state.json');
-try {
-  const saved = JSON.parse(readFileSync(WORKSHOP_STATE_FILE, 'utf8'));
-  for (const id of Array.isArray(saved.sessions) ? saved.sessions : []) if (typeof id === 'string') sessions.add(id);
-  for (const id of Array.isArray(saved.briefed) ? saved.briefed : []) if (typeof id === 'string') briefedSessions.add(id);
-  for (const entry of Array.isArray(saved.checkpoints) ? saved.checkpoints : []) {
-    if (entry && typeof entry.id === 'string' && /^[0-9a-f]{40}$/.test(entry.before) && /^[0-9a-f]{40}$/.test(entry.after) && Array.isArray(entry.files)) checkpoints.set(entry.id, entry);
-  }
-} catch { /* erster Start oder Datei fehlt */ }
+function loadWorkshopState() {
+  sessions.clear();
+  briefedSessions.clear();
+  checkpoints.clear();
+  try {
+    const saved = JSON.parse(readFileSync(WORKSHOP_STATE_FILE, 'utf8'));
+    for (const id of Array.isArray(saved.sessions) ? saved.sessions : []) if (typeof id === 'string') sessions.add(id);
+    for (const id of Array.isArray(saved.briefed) ? saved.briefed : []) if (typeof id === 'string') briefedSessions.add(id);
+    for (const entry of Array.isArray(saved.checkpoints) ? saved.checkpoints : []) {
+      if (entry && typeof entry.id === 'string' && /^[0-9a-f]{40}$/.test(entry.before) && /^[0-9a-f]{40}$/.test(entry.after) && Array.isArray(entry.files)) checkpoints.set(entry.id, entry);
+    }
+  } catch { /* erster Start oder Datei fehlt */ }
+}
+loadWorkshopState();
 function saveWorkshopState() {
   const value = { sessions: [...sessions].slice(-200), briefed: [...briefedSessions].slice(-200), checkpoints: [...checkpoints.values()] };
   writeFile(WORKSHOP_STATE_FILE, JSON.stringify(value), 'utf8').catch((error) => console.error(`Werkstatt-Zustand nicht gespeichert: ${error.message}`));
@@ -1326,6 +1365,16 @@ async function prepareClaudeMcpConfig() {
   return CLAUDE_RUN_MCP_FILE;
 }
 
+// Hook-Einstellungen für Claude-Läufe: nach Edit/Write prüft pruef-hook.mjs die Datei (siehe dort)
+const CLAUDE_HOOK_SETTINGS_FILE = path.join(tmpdir(), `workflow-hooks-${process.pid}.json`);
+async function prepareHookSettings() {
+  const quote = (value) => `"${value.replace(/\\/g, '/')}"`;
+  const command = `${quote(process.execPath)} ${quote(path.join(HERE, 'pruef-hook.mjs'))}`;
+  const settings = { hooks: { PostToolUse: [{ matcher: 'Edit|Write|MultiEdit', hooks: [{ type: 'command', command, timeout: 60 }] }] } };
+  await writeFile(CLAUDE_HOOK_SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+  return CLAUDE_HOOK_SETTINGS_FILE;
+}
+
 // Freigabe-Karte: Code und Befehle als echten Text mit Zeilenumbrüchen zeigen, nicht als JSON-Zeile.
 // Was zu lang ist, wird gekürzt markiert; die Werkstatt lässt so etwas dann nicht erlauben.
 const APPROVAL_PREVIEW_MAX = 60_000;
@@ -1520,6 +1569,12 @@ async function handleChat(request, response, preParsed) {
     }
   }
   if (data.sessionId) args.push('--resume', data.sessionId);
+  // Prüfen nach jeder Änderung (Hook nach Edit/Write), nur wenn Claude schreiben darf
+  if (!readOnly) {
+    try { args.push('--settings', await prepareHookSettings()); } catch (error) { console.error(`Prüf-Hook nicht eingerichtet: ${error.message}`); }
+  }
+  // Roblox-Doku zum Nachschlagen: Ordner freigeben, damit Lesen ohne Rückfrage geht
+  if (PROJECT.kind === 'roblox' && tools.docsReady()) args.push('--add-dir', tools.docsFolder());
 
   // Live-Text: Antwort als NDJSON-Strom ({type:"delta"|"tool"|"done"|"error"}), sonst wie bisher als ein JSON
   const stream = data.stream === true;
@@ -1540,7 +1595,7 @@ async function handleChat(request, response, preParsed) {
           for (const block of part.content) {
             const media = block?.source?.media_type;
             const base64 = block?.source?.data;
-            if (block?.type === 'image' && IMAGE_TYPES.includes(media) && typeof base64 === 'string' && base64.length <= MAX_IMAGE_BASE64 && imagesSent < 6) {
+            if (block?.type === 'image' && IMAGE_TYPES.includes(media) && typeof base64 === 'string' && base64.length <= MAX_IMAGE_BASE64 && imagesSent < 12) {
               imagesSent += 1;
               emit({ type: 'image', mediaType: media, data: base64 });
             }
@@ -1804,8 +1859,11 @@ function gitIn(folder, args) {
 async function createProject(data) {
   const name = typeof data.name === 'string' ? data.name.trim().replace(/\s+/g, ' ').slice(0, 60) : '';
   if (!name) throw Object.assign(new Error('Bitte gib dem Projekt einen Namen.'), { status: 400 });
-  const kind = PROJECT_KINDS[data.kind] ? data.kind : 'andere';
-  const description = typeof data.description === 'string' ? data.description.trim().slice(0, 200) : '';
+  // Eigene Vorlage (aus einem fertigen Projekt): Spielart kommt aus der Vorlage
+  const template = typeof data.vorlage === 'string' && data.vorlage ? ownTemplates.list().find((item) => item.id === data.vorlage) : null;
+  if (data.vorlage && !template) throw Object.assign(new Error('Diese eigene Vorlage gibt es nicht mehr.'), { status: 404 });
+  const kind = template && PROJECT_KINDS[template.kind] ? template.kind : PROJECT_KINDS[data.kind] ? data.kind : 'andere';
+  const description = typeof data.description === 'string' && data.description.trim() ? data.description.trim().slice(0, 200) : (template?.description || '');
   let parent;
   try { parent = checkProjectFolder(data.parent || defaultProjectParent()); } catch (error) { throw Object.assign(error, { status: 400 }); }
   if (insideProject(parent)) throw Object.assign(new Error('Dieser Ordner gehört schon zu einem Projekt (oder Git-Repo). Nimm einen Ordner daneben, z. B. Dokumente\\GitHub.'), { status: 400 });
@@ -1813,7 +1871,16 @@ async function createProject(data) {
   const folder = path.join(parent, slug);
   if (existsSync(folder)) throw Object.assign(new Error(`Den Ordner „${slug}“ gibt es dort schon. Nimm einen anderen Namen oder füg den Ordner über „Ordner öffnen“ hinzu.`), { status: 409 });
   await mkdir(folder);
-  const files = await createProjectFiles({ folder, slug, name, kind, kindLabel: PROJECT_KINDS[kind], description });
+  let files;
+  try {
+    files = template
+      ? (await ownTemplates.copyInto(template.id, folder, name)).files
+      : (await createProjectFiles({ folder, slug, name, kind, kindLabel: PROJECT_KINDS[kind], description })).length;
+  } catch (error) {
+    // Halb angelegten Ordner wieder wegräumen (er war vorher leer und neu)
+    await rm(folder, { recursive: true, force: true }).catch(() => {});
+    throw error;
+  }
 
   // Roblox: rojo.exe aus einem anderen Roblox-Projekt mitnehmen, damit der Rojo-Knopf gleich geht (ist git-ignoriert)
   let rojo = 'nicht-noetig';
@@ -1832,7 +1899,7 @@ async function createProject(data) {
   if (!init.ok) git = 'kein-git';
   else {
     await gitIn(folder, ['add', '-A']);
-    const commit = await gitIn(folder, ['commit', '-m', `Neues Projekt „${name}“ aus der Workflow-Vorlage`]);
+    const commit = await gitIn(folder, ['commit', '-m', template ? `Neues Projekt „${name}“ aus der eigenen Vorlage „${template.name}“` : `Neues Projekt „${name}“ aus der Workflow-Vorlage`]);
     if (!commit.ok) git = 'ohne-commit';
   }
 
@@ -1840,7 +1907,7 @@ async function createProject(data) {
   projectStore.projects.push(project);
   writeProjects(projectStore);
   console.log(`Neues Projekt angelegt: ${name} (${folder}), Git: ${git}`);
-  return { project, files: files.length, git, rojo };
+  return { project, files, git, rojo };
 }
 
 // Ordner prüfen, bevor er ein Projekt wird: muss es geben, kein Laufwerk (C:\) und nicht Workflow selbst
@@ -1856,9 +1923,56 @@ function checkProjectFolder(value) {
   return folder;
 }
 
+// ===== Projekt-Status auf der Karte (Ausbau 2026-10-22): ungespeicherte Änderungen, Zweig, offene Pull Requests =====
+const GH_COMMAND = process.platform === 'win32' && process.env.ProgramFiles && existsSync(path.join(process.env.ProgramFiles, 'GitHub CLI', 'gh.exe'))
+  ? path.join(process.env.ProgramFiles, 'GitHub CLI', 'gh.exe')
+  : 'gh';
+const projectStatusCache = new Map();
+
+async function projectStatus(project) {
+  if (!folderExists(project.root) || !existsSync(path.join(project.root, '.git'))) return { git: false };
+  const status = await tools.run(GIT_COMMAND, ['status', '--porcelain=v1', '-b', '--untracked-files=normal'], { cwd: project.root, timeoutMs: 15_000 });
+  if (status.code !== 0) return { git: false };
+  const lines = status.stdout.split(/\r?\n/).filter(Boolean);
+  const head = lines[0]?.startsWith('## ') ? lines.shift().slice(3) : '';
+  const branch = head.replace(/^No commits yet on /, '').split('...')[0].trim();
+  const result = {
+    git: true, branch, changes: lines.length,
+    ahead: Number(/ahead (\d+)/.exec(head)?.[1] || 0), behind: Number(/behind (\d+)/.exec(head)?.[1] || 0),
+    remote: head.includes('...'), prs: []
+  };
+  // Offene Pull Requests über die GitHub CLI (Timo ist dort angemeldet); ohne gh oder ohne GitHub-Repo einfach keine
+  if (result.remote) {
+    const prs = await tools.run(GH_COMMAND, ['pr', 'list', '--state', 'open', '--limit', '10', '--json', 'number,title,url,headRefName,isDraft'], { cwd: project.root, timeoutMs: 20_000 });
+    if (prs.code === 0) {
+      try {
+        result.prs = JSON.parse(prs.stdout).filter((item) => /^https:\/\/github\.com\//.test(String(item.url))).map((item) => ({
+          number: Number(item.number), title: String(item.title || '').slice(0, 120), url: String(item.url), branch: String(item.headRefName || '').slice(0, 80), draft: item.isDraft === true
+        }));
+      } catch { /* keine lesbare Liste */ }
+    } else result.ghMissing = Boolean(prs.missing);
+  }
+  return result;
+}
+
+async function cachedProjectStatus(project, fresh = false) {
+  const cached = projectStatusCache.get(project.id);
+  if (!fresh && cached && Date.now() - cached.at < 90_000) return cached.value;
+  let value;
+  try { value = await projectStatus(project); } catch (error) { value = { git: false, error: error.message }; }
+  projectStatusCache.set(project.id, { at: Date.now(), value });
+  return value;
+}
+
 async function handleProjects(request, response, pathname) {
   const listing = () => ({ active: PROJECT?.id || null, busy: activeRuns > 0, kinds: PROJECT_KINDS, defaultParent: defaultProjectParent(), projects: projectStore.projects.map(publicProject) });
   if (request.method === 'GET' && pathname === '/api/projekte') return sendJson(response, 200, listing());
+  if (request.method === 'GET' && pathname === '/api/projekte/status') {
+    const fresh = new URL(request.url, `http://${HOST}:${PORT}`).searchParams.get('frisch') === '1';
+    const entries = await Promise.all(projectStore.projects.map(async (item) => [item.id, await cachedProjectStatus(item, fresh)]));
+    return sendJson(response, 200, { status: Object.fromEntries(entries) });
+  }
+  if (request.method === 'GET' && pathname === '/api/projekte/vorlagen') return sendJson(response, 200, { vorlagen: ownTemplates.list() });
   if (request.method !== 'POST') return sendJson(response, 405, { error: 'Diese Anfrage ist nicht erlaubt.' });
   let data;
   try { data = await readJson(request); } catch (error) { return sendJson(response, 400, { error: error.message }); }
@@ -1905,6 +2019,22 @@ async function handleProjects(request, response, pathname) {
     }
   }
 
+  if (pathname === '/api/projekte/vorlage-speichern') {
+    const project = projectStore.projects.find((item) => item.id === data.id);
+    if (!project) return sendJson(response, 404, { error: 'Dieses Projekt gibt es nicht in der Liste.' });
+    try {
+      const meta = await ownTemplates.save(project, PROJECT_KINDS[project.kind] || 'Anderes', data.name);
+      return sendJson(response, 200, { vorlage: meta, vorlagen: ownTemplates.list() });
+    } catch (error) {
+      return sendJson(response, error.status || 500, { error: error.message || 'Die Vorlage konnte nicht gespeichert werden.' });
+    }
+  }
+
+  if (pathname === '/api/projekte/vorlage-loeschen') {
+    try { return sendJson(response, 200, { vorlagen: await ownTemplates.remove(data.id) }); }
+    catch (error) { return sendJson(response, error.status || 500, { error: error.message }); }
+  }
+
   if (pathname === '/api/projekte/entfernen') {
     const project = projectStore.projects.find((item) => item.id === data.id);
     if (!project) return sendJson(response, 404, { error: 'Dieses Projekt gibt es nicht in der Liste.' });
@@ -1944,7 +2074,7 @@ async function runLearningRound(data) {
 // ===== Worky verbessert sich selbst (Paket 5) =====
 // Verbesserungs-Runde: liest 👎 und abgebrochene Läufe und schlägt Regeln, Fähigkeiten (Skills) oder App-Verbesserungen
 // vor. App-Verbesserungen baut Worky nur in der Testkopie (testkopie.mjs), Timo probiert sie aus und entscheidet.
-const APP_SUMMARY = 'Projektliste und neue Projekte aus Vorlagen; Chat mit Worky (Schnell = nur lesen, Gründlich = Claude Code mit Skills, Spezialisten, Freigabe-Karten); Roblox Studio, Blender, Rojo, GitHub Desktop und Obsidian per Knopf; Aufgaben, Änderungen mit Rückgängig, Fehler-Wächter, Prompt-Ersteller, Seite „Worky lernt“ mit Daumen und Vorschlägen.';
+const APP_SUMMARY = 'Projektliste und neue Projekte aus Vorlagen; Chat mit Worky (Schnell = nur lesen, Gründlich = Claude Code mit Skills, Spezialisten, Freigabe-Karten); Roblox Studio, Blender, Rojo, GitHub Desktop und Obsidian per Knopf; Aufgaben, Änderungen mit Rückgängig, Fehler-Wächter, Prompt-Ersteller, Seite „Worky lernt“ mit Daumen und Vorschlägen; Prüfung nach jeder Änderung (Hook), Roblox-Doku lokal, Lune-Rechentests, Browser-Spiel- und Godot-Selbsttest, Sicherung, Projekt-Status auf den Karten, eigene Vorlagen, Tastenkürzel, Update-Hinweis, Tages-Runde.';
 let improving = false;
 async function runImproveRound() {
   if (improving) throw Object.assign(new Error('Worky denkt gerade schon nach.'), { status: 409 });
@@ -1961,6 +2091,149 @@ async function runImproveRound() {
 // Von selbst: nach 3 schlechten Läufen, höchstens einmal in 20 Stunden, im Hintergrund
 function maybeImprove() {
   if (PROJECT && !improving && learning.improveDue(learningProject())) runImproveRound().catch((error) => console.error(`Verbesserungs-Runde: ${error.message}`));
+}
+
+// ===== Tages-Runde (Ausbau 2026-10-22): einmal am Tag den Chatverlauf vom Vortag durchsehen =====
+// Läuft im Hintergrund für das offene Projekt, nur wenn Worky gerade nichts tut. Vorschläge wie immer nur per Klick.
+const localDay = (daysBack) => new Intl.DateTimeFormat('sv-SE').format(new Date(Date.now() - daysBack * 86_400_000));
+let dailyRunning = false;
+async function runDailyRound(day, manual = false) {
+  if (dailyRunning) throw Object.assign(new Error('Die Tages-Runde läuft gerade schon.'), { status: 409 });
+  dailyRunning = true;
+  try {
+    const project = learningProject();
+    if (!manual) learning.markDaily(project, day); // auch bei Fehlern nicht alle 30 Minuten neu versuchen
+    let log = '';
+    try { log = await readFile(path.join(CHAT_LOG_ROOT, `${day}.md`), 'utf8'); } catch { log = ''; }
+    if (log.trim().length < 400) {
+      if (manual) throw Object.assign(new Error('Heute steht noch zu wenig im Chatverlauf. Arbeite erst ein bisschen mit Worky.'), { status: 409 });
+      return [];
+    }
+    const raw = await askClaudeText(learning.dailyPrompt(project, day, log));
+    return learning.addProposals(project, raw, 'tag', ['stolperstein', 'regel', 'allgemein'], 3);
+  } finally {
+    dailyRunning = false;
+  }
+}
+function dailyTick() {
+  // Die Testkopie (Port 4181) denkt nicht selbst nach, das macht nur das echte Workflow
+  if (process.env.WORKFLOW_TESTKOPIE === '1' || !PROJECT || activeRuns > 0 || improving || dailyRunning) return;
+  const day = localDay(1);
+  if (!learning.dailyDue(learningProject(), day)) return;
+  runDailyRound(day).then((added) => { if (added.length) console.log(`Tages-Runde ${day}: ${added.length} Vorschläge auf „Worky lernt“.`); })
+    .catch((error) => console.error(`Tages-Runde: ${error.message}`));
+}
+setTimeout(dailyTick, 3 * 60_000).unref();
+setInterval(dailyTick, 30 * 60_000).unref();
+
+// ===== Update-Hinweis (Ausbau 2026-10-22): liegt auf GitHub eine neuere Workflow-Version? =====
+// Holt höchstens alle 30 Minuten den Stand von origin/main (ändert nichts am Ordner). Aktualisieren macht der
+// vorhandene Knopf (testkopie.mjs: git pull --ff-only, node --watch startet neu).
+const WORKFLOW_ROOT = path.dirname(HERE);
+let versionCache = { at: 0, value: null };
+async function workflowVersion(fresh = false) {
+  if (process.env.WORKFLOW_TESTKOPIE === '1') return { available: false, why: 'Das ist die Testkopie.' };
+  if (!existsSync(path.join(WORKFLOW_ROOT, '.git'))) return { available: false, why: 'Der Workflow-Ordner ist kein Git-Ordner.' };
+  if (!fresh && versionCache.value && Date.now() - versionCache.at < 30 * 60_000) return versionCache.value;
+  const git = (args, timeoutMs = 15_000) => tools.run(GIT_COMMAND, args, { cwd: WORKFLOW_ROOT, timeoutMs, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } });
+  const fetched = await git(['fetch', '--quiet', 'origin', 'main'], 45_000);
+  const branch = (await git(['rev-parse', '--abbrev-ref', 'HEAD'])).stdout.trim();
+  const behind = Number((await git(['rev-list', '--count', 'HEAD..origin/main'])).stdout.trim()) || 0;
+  const latest = behind ? (await git(['log', '--format=%s', '-n', '5', 'HEAD..origin/main'])).stdout.split(/\r?\n/).filter(Boolean).map((line) => line.slice(0, 120)) : [];
+  const value = { available: true, fetched: fetched.code === 0, branch, behind, latest, checkedAt: new Date().toISOString() };
+  versionCache = { at: Date.now(), value };
+  return value;
+}
+
+// ===== Sicherung (Ausbau 2026-10-22) =====
+// Nach dem Einspielen liest Workflow Projektliste, Gelerntes und gemerkte Sitzungen neu ein (ohne Neustart)
+function reloadAfterRestore() {
+  learning.reload();
+  loadWorkshopState();
+  const store = readProjects();
+  if (!store || !store.projects.length) return;
+  projectStore = store;
+  const start = projectStore.projects.find((item) => item.id === projectStore.active && folderExists(item.root)) || projectStore.projects.find((item) => folderExists(item.root));
+  if (start && start.id !== PROJECT?.id) { watcherStop(); applyProject(start); }
+  else if (start) PROJECT = start;
+  projectStatusCache.clear();
+}
+
+async function handleBackup(request, response, pathname, url) {
+  if (request.method === 'GET' && pathname === '/api/sicherung') return sendJson(response, 200, { sicherungen: backups.list(), autoFaellig: backups.autoDue() });
+  if (request.method === 'GET' && pathname === '/api/sicherung/datei') {
+    try {
+      const name = String(url.searchParams.get('name') || '');
+      const backup = await backups.read(name);
+      response.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
+        'Content-Disposition': `attachment; filename="workflow-sicherung-${name}"`
+      });
+      return response.end(JSON.stringify(backup));
+    } catch (error) { return sendJson(response, error.status || 500, { error: error.message }); }
+  }
+  if (request.method !== 'POST') return sendJson(response, 405, { error: 'Diese Anfrage ist nicht erlaubt.' });
+  if (request.headers.origin !== `http://${HOST}:${PORT}`) return sendJson(response, 403, { error: 'Sicherungen gehen nur über die Workflow-Seite.' });
+  let data;
+  try { data = await readJson(request, 120_000_000); } catch (error) { return sendJson(response, 400, { error: error.message }); }
+  try {
+    if (pathname === '/api/sicherung/erstellen') {
+      const { name } = await backups.create(data.browser, 'hand');
+      return sendJson(response, 200, { name, sicherungen: backups.list() });
+    }
+    if (pathname === '/api/sicherung/auto') {
+      if (!backups.autoDue()) return sendJson(response, 200, { done: false });
+      const { name } = await backups.create(data.browser, 'auto');
+      return sendJson(response, 200, { done: true, name });
+    }
+    if (pathname === '/api/sicherung/einspielen') {
+      if (activeRuns > 0) return sendJson(response, 409, { error: 'Worky arbeitet gerade. Warte, bis er fertig ist, dann einspielen.' });
+      const backup = data.name ? await backups.read(data.name) : data.backup;
+      const result = await backups.restore(backup, data.browser);
+      reloadAfterRestore();
+      return sendJson(response, 200, result);
+    }
+  } catch (error) {
+    return sendJson(response, error.status || 500, { error: error.message || 'Die Sicherung hat nicht geklappt.' });
+  }
+  return sendJson(response, 404, { error: 'Unbekannte Sicherungs-Anfrage.' });
+}
+
+// ===== Werkzeuge-Seite und Werkzeuge für Worky (Ausbau 2026-10-22) =====
+const gameUrl = (file = '') => `http://${HOST}:${PORT}/spiel/${String(file).replace(/^\/+/, '').split('/').map(encodeURIComponent).join('/')}`;
+
+async function handleTools(request, response, pathname, url) {
+  // Worky ruft über werkstatt-tools-mcp.mjs (mit Token), die Seite über ihre eigene Herkunft
+  const fromWorky = request.headers['x-approval-token'] === APPROVAL_TOKEN;
+  const fromPage = request.headers.origin === `http://${HOST}:${PORT}`;
+  try {
+    if (request.method === 'GET' && pathname === '/api/werkzeuge') {
+      return sendJson(response, 200, { kind: PROJECT?.kind || null, ...(await tools.overview()), tests: PROJECT ? tools.luneReady() : false });
+    }
+    if (!fromWorky && !fromPage) return sendJson(response, 403, { error: 'Nur für Workflow.' });
+    if (pathname === '/api/werkzeuge/doku') return sendJson(response, 200, await tools.docsDownload());
+    if (pathname === '/api/werkzeuge/lune') return sendJson(response, 200, await tools.luneInstall());
+    if (pathname === '/api/werkzeuge/godot') {
+      const data = await readJson(request);
+      return sendJson(response, 200, await tools.setGodot(data.path));
+    }
+    if (!PROJECT) return sendJson(response, 409, { error: 'Wähle zuerst ein Projekt.' });
+    if (pathname === '/api/werkzeuge/lune/testen') return sendJson(response, 200, await tools.luneTests(PROJECT_ROOT));
+    if (pathname === '/api/werkzeuge/godot/testen') {
+      if (PROJECT.kind !== 'godot') return sendJson(response, 409, { error: 'Das offene Projekt ist kein Godot-Projekt.' });
+      return sendJson(response, 200, await tools.godotTest(PROJECT_ROOT, Number(url.searchParams.get('frames')) || 300));
+    }
+    if (pathname === '/api/werkzeuge/spiel/testen') {
+      if (PROJECT.kind !== 'web') return sendJson(response, 409, { error: 'Den Spiel-Test gibt es nur für Browser-Spiele.' });
+      const file = String(url.searchParams.get('datei') || '');
+      if (file && (!/^[\w./-]{1,120}$/.test(file) || file.split('/').includes('..'))) return sendJson(response, 400, { error: 'Ungültiger Dateiname.' });
+      const seconds = Math.min(Math.max(Number(url.searchParams.get('sekunden')) || 5, 1), 30);
+      return sendJson(response, 200, await tools.browserTest(gameUrl(file), { seconds }));
+    }
+  } catch (error) {
+    return sendJson(response, error.status || 500, { error: error.message || 'Das Werkzeug hat nicht geklappt.' });
+  }
+  return sendJson(response, 404, { error: 'Unbekannte Werkzeug-Anfrage.' });
 }
 
 const testCopy = createTestCopy({
@@ -2039,6 +2312,11 @@ async function handleLearning(request, response, pathname) {
       return sendJson(response, 200, { proposal, open: learning.openCount(learningProject()) });
     }
     if (pathname === '/api/lernen/einstellungen') return sendJson(response, 200, { settings: learning.setSettings(data) });
+    if (pathname === '/api/lernen/tagesrunde') {
+      // Von Hand: den heutigen Chatverlauf ansehen (die automatische Runde nimmt den Vortag)
+      const added = await runDailyRound(localDay(0), true);
+      return sendJson(response, 200, { added: added.length, open: learning.openCount(learningProject()) });
+    }
     if (pathname === '/api/lernen/verbessern') {
       const added = await runImproveRound();
       return sendJson(response, 200, { added: added.length, open: learning.openCount(learningProject()) });
@@ -2110,6 +2388,9 @@ const server = createServer(async (request, response) => {
 
   if (pathname.startsWith('/api/projekte')) return handleProjects(request, response, pathname);
   if (pathname === '/api/testkopie' || pathname.startsWith('/api/testkopie/')) return handleTestCopy(request, response, pathname);
+  if (pathname === '/api/sicherung' || pathname.startsWith('/api/sicherung/')) return handleBackup(request, response, pathname, requestUrl);
+  if (request.method === 'GET' && pathname === '/api/workflow/version') return sendJson(response, 200, await workflowVersion(requestUrl.searchParams.get('frisch') === '1'));
+  if (pathname === '/api/werkzeuge' || pathname.startsWith('/api/werkzeuge/')) return handleTools(request, response, pathname, requestUrl);
   // Ohne gewähltes Projekt weiß keine KI, wo sie arbeiten soll
   if (!PROJECT && pathname.startsWith('/api/') && !pathname.endsWith('/status') && pathname !== '/api/agents' && pathname !== '/api/approvals') {
     return sendJson(response, 409, { error: 'Wähle zuerst oben ein Projekt aus (oder füge eins hinzu).' });

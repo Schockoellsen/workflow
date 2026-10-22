@@ -2,6 +2,8 @@
 // Zusätzliche Werkzeuge für Worky, die über den Werkstatt-Server laufen. Schlüssel (z. B. für Freesound)
 // liegen nur beim Server in .env.local; dieser Prozess und Claude sehen sie nie.
 // Werkzeug „sound_suche“: lizenzfreie Geräusche auf Freesound suchen (nur lesen, nichts herunterladen).
+// Seit 2026-10-22: „spiel_testen“ (Browser-Spiel ohne Fenster: Bild + Konsole), „godot_testen“ (Godot ohne Fenster)
+// und „rechen_tests“ (alle Lune-Tests in tests/). Die Arbeit macht der Workflow-Server (werkzeuge.mjs).
 
 import { createInterface } from 'node:readline';
 
@@ -39,6 +41,55 @@ async function soundSearch(args) {
   return text(`Freesound-Treffer für „${query}“ (${result.total} insgesamt, ${onlyCc0 ? 'nur CC0' : 'alle Lizenzen'}):\n\n${lines.join('\n')}\n\nHinweis: Für das Spiel nur CC0 nehmen. Herunterladen und bei Roblox hochladen macht Timo; die Asset-ID kommt danach von ihm.`);
 }
 
+// Werkstatt-Server fragen (POST mit Token), Antwort als JSON
+async function callServer(pathAndQuery) {
+  let response;
+  try {
+    response = await fetch(`${SERVER}${pathAndQuery}`, { method: 'POST', headers: { 'X-Approval-Token': TOKEN } });
+  } catch (error) {
+    return { error: `Workflow ist nicht erreichbar: ${error.message}` };
+  }
+  const result = await response.json().catch(() => ({}));
+  return response.ok ? result : { error: result.error || 'Das Werkzeug hat nicht geklappt.' };
+}
+
+async function gameTest(args) {
+  const file = typeof args?.datei === 'string' ? args.datei.trim().slice(0, 120) : '';
+  const seconds = Number.isFinite(Number(args?.sekunden)) ? Number(args.sekunden) : 5;
+  const result = await callServer(`/api/werkzeuge/spiel/testen?datei=${encodeURIComponent(file)}&sekunden=${seconds}`);
+  if (result.error) return text(result.error);
+  const lines = result.console.map((line) => `${line.error ? '❌' : '·'} ${line.text} (${line.source})`);
+  const summary = [
+    `Spiel-Test mit ${result.browser}: ${result.url}`,
+    result.errors ? `${result.errors} Fehler in der Konsole.` : 'Keine Fehler in der Konsole.',
+    ...(result.maybeEmpty ? ['Achtung: Das Bild ist fast einfarbig, vielleicht zeigt die Seite nichts an.'] : []),
+    '', 'Konsole:', ...(lines.length ? lines : ['(leer)']),
+    '', 'Das Bild unten zeigt das Spiel nach ein paar Sekunden.'
+  ].join('\n');
+  return { content: [{ type: 'text', text: summary }, { type: 'image', data: result.image, mimeType: 'image/png' }] };
+}
+
+async function godotTest(args) {
+  const frames = Number.isFinite(Number(args?.frames)) ? Number(args.frames) : 300;
+  const result = await callServer(`/api/werkzeuge/godot/testen?frames=${frames}`);
+  if (result.error) return text(result.error);
+  return text([
+    `Godot (${result.file}) ohne Fenster gestartet, Ende mit Code ${result.exitCode}${result.timedOut ? ' (Zeitgrenze erreicht)' : ''}.`,
+    result.errors.length ? `Fehler (${result.errors.length}):\n${result.errors.join('\n')}` : 'Keine Fehlerzeilen gefunden.',
+    '', 'Letzte Ausgabe:', result.output || '(keine)'
+  ].join('\n'));
+}
+
+async function mathTests() {
+  const result = await callServer('/api/werkzeuge/lune/testen');
+  if (result.error) return text(result.error);
+  if (!result.files) return text(result.hint);
+  return text([
+    `Rechen-Tests mit Lune: ${result.passed} von ${result.files} bestanden.`,
+    ...result.results.map((item) => `${item.ok ? '✅' : '❌'} ${item.file}${item.ok ? '' : `\n${item.output.split('\n').slice(-12).join('\n')}`}`)
+  ].join('\n'));
+}
+
 const TOOLS = [{
   name: 'sound_suche',
   description: 'Sucht lizenzfreie Geräusche auf Freesound.org (Titel, Dauer, Lizenz, Vorschau-Link als mp3). Nur lesen. Suchbegriffe am besten auf Englisch.',
@@ -51,6 +102,24 @@ const TOOLS = [{
     },
     required: ['suchbegriff']
   }
+}, {
+  name: 'spiel_testen',
+  description: 'Browser-Spiel des offenen Projekts ohne Fenster in Edge laden, ein paar Sekunden laufen lassen und Bildschirmfoto plus Konsole (Fehler) zurückgeben. Nur für Browser-Spiele.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      datei: { type: 'string', description: 'Welche Seite (Standard: index.html)' },
+      sekunden: { type: 'number', description: 'Wie lange das Spiel vor dem Foto läuft (1 bis 30, Standard 5)' }
+    }
+  }
+}, {
+  name: 'godot_testen',
+  description: 'Godot-Projekt des offenen Projekts ohne Fenster starten (vorher importieren), ein paar hundert Frames laufen lassen und Fehler aus der Ausgabe zurückgeben. Nur für Godot-Projekte.',
+  inputSchema: { type: 'object', properties: { frames: { type: 'number', description: 'Wie viele Frames (Standard 300)' } } }
+}, {
+  name: 'rechen_tests',
+  description: 'Alle Lune-Tests im Ordner tests/ des offenen Projekts ausführen (jede .luau-Datei mit „lune run“) und Ergebnis je Datei zurückgeben.',
+  inputSchema: { type: 'object', properties: {} }
 }];
 
 async function handle(message) {
@@ -63,6 +132,9 @@ async function handle(message) {
   if (method === 'tools/list') return send({ jsonrpc: '2.0', id, result: { tools: TOOLS } });
   if (method === 'tools/call') {
     if (params?.name === 'sound_suche') return send({ jsonrpc: '2.0', id, result: await soundSearch(params.arguments) });
+    if (params?.name === 'spiel_testen') return send({ jsonrpc: '2.0', id, result: await gameTest(params.arguments) });
+    if (params?.name === 'godot_testen') return send({ jsonrpc: '2.0', id, result: await godotTest(params.arguments) });
+    if (params?.name === 'rechen_tests') return send({ jsonrpc: '2.0', id, result: await mathTests() });
     return send({ jsonrpc: '2.0', id, error: { code: -32602, message: 'Unbekanntes Werkzeug.' } });
   }
   return send({ jsonrpc: '2.0', id, error: { code: -32601, message: `Methode nicht unterstützt: ${method}` } });

@@ -5,3 +5,6 @@ app/.env.local
 app/daten/
 app/.werkstatt-state.json
 node_modules/
+
+# Sicherungen von Workflow (enthalten Chats und Projektliste) – nur auf diesem PC
+app/sicherungen/

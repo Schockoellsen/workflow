@@ -97,7 +97,7 @@
 
   // ---------- Seite „Worky lernt“ ----------
   const TAGS = { stolperstein: 'wl-tag-err', regel: 'wl-tag-rule', allgemein: 'wl-tag-all', skill: 'wl-tag-skill', app: 'wl-tag-app' };
-  const SOURCES = { auftrag: 'nach einem Auftrag', daumen: 'nach deinem 👎', fehler: 'nach einem Fehler', verbesserung: 'aus der Verbesserungs-Runde', timo: 'deine Idee' };
+  const SOURCES = { auftrag: 'nach einem Auftrag', daumen: 'nach deinem 👎', fehler: 'nach einem Fehler', verbesserung: 'aus der Verbesserungs-Runde', timo: 'deine Idee', tag: 'aus der Tages-Runde' };
   let pollTimer = null;
   const when = (iso) => { try { return new Date(iso).toLocaleString('de-DE', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
   function button(text, className, onClick) {
@@ -295,6 +295,21 @@
     const saveSetting = async (key, value, box) => {
       try { await api('/api/lernen/einstellungen', { [key]: value }); say.textContent = 'Gespeichert.'; } catch (error) { box.checked = !value; say.textContent = error.message; }
     };
+    // Tages-Runde von Hand: den heutigen Chatverlauf ansehen
+    const daily = el('div', 'wl-daily');
+    const dailySay = el('span', 'wl-saved');
+    const dailyButton = button('Heutigen Tag jetzt durchsehen', 'wl-skip', async () => {
+      dailyButton.disabled = true;
+      dailySay.textContent = 'Worky liest den heutigen Chatverlauf …';
+      try {
+        const result = await api('/api/lernen/tagesrunde', {});
+        setBadge(result.open);
+        if (result.added) { void showPage(); return; }
+        dailySay.textContent = 'Heute gab es nichts Neues zum Merken.';
+      } catch (error) { dailySay.textContent = error.message; }
+      dailyButton.disabled = false;
+    });
+    daily.append(dailyButton, dailySay);
     // Verbesserungs-Runde und eigene Ideen für Workflow
     const improve = el('div', 'wl-improve');
     const improveSay = el('p', 'wl-saved', data.lastImprove ? `Zuletzt nachgedacht: ${when(data.lastImprove)}` : 'Noch nie nachgedacht.');
@@ -342,6 +357,8 @@
       toggle('Von selbst nachdenken', 'Nach 3 schlechten Läufen (👎 oder Abbruch) eine Verbesserungs-Runde, höchstens einmal am Tag.', data.settings.autoImprove !== false, (value, box) => void saveSetting('autoImprove', value, box)),
       toggle('In alle Projekte mitnehmen', 'Allgemeines Wissen (Luau, Blender, Git) hilft auch beim nächsten Spiel.', data.settings.shareGeneral, (value, box) => void saveSetting('shareGeneral', value, box)),
       toggle('Lern-Runde nach Aufträgen', 'Nach jedem Gründlich-Auftrag, der Dateien ändert, eine kurze Claude-Anfrage. Ein 👎 startet sie immer.', data.settings.autoRound, (value, box) => void saveSetting('autoRound', value, box)),
+      toggle('Tages-Runde', `Einmal am Tag liest Worky den Chatverlauf vom Vortag und schlägt vor, was er sich merken sollte.${data.lastDaily ? ` Zuletzt: ${data.lastDaily}.` : ''}`, data.settings.autoDaily !== false, (value, box) => void saveSetting('autoDaily', value, box)),
+      daily,
       say
     );
     if (data.shared.length) {
