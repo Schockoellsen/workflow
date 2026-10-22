@@ -1,0 +1,125 @@
+/* Nacht – dunkler Modus zum Farbschema „Morgenwerk“ (gleiche Farbfamilie: Indigo, Mint, Violett).
+   Gilt, wenn <html data-theme="dark"> gesetzt ist (Knopf oben rechts, theme.js). Nur Farben. */
+
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --ls-ground:#0f1117; --ls-sidebar:#12141c; --ls-panel:#171a24; --ls-panel-2:#1b1f2b; --ls-raised:#232838; --ls-well:#141722;
+  --ls-line:#252a39; --ls-line-2:#2e3446; --ls-line-3:#3b4258;
+  --ls-text:#e8eaf4; --ls-text-2:#b6bbcf; --ls-muted:#8b91a8;
+  --ls-accent:#8d91f6; --ls-accent-hi:#a8abff; --ls-accent-ink:#ffffff; --ls-accent-soft:#23264a;
+  --ls-mint:#2fd3be; --ls-mint-soft:#11302c;
+  --ls-ok:#3ccf8e; --ls-warn:#e2b45c; --ls-err:#f07882; --ls-info:#8d91f6; --ls-violet:#b49af2;
+  --ls-shadow:0 1px 2px #0006,0 10px 28px #0007;
+  --ls-grad:linear-gradient(135deg,#9a9eff 0%,#6d71e8 45%,#22c3b0 100%);
+}
+html[data-theme="dark"],html[data-theme="dark"] body{background:var(--ls-ground);color:var(--ls-text)}
+html[data-theme="dark"] body::before{background-image:radial-gradient(55% 45% at 88% -8%,#2a2d6b66 0%,transparent 70%),radial-gradient(45% 40% at 30% -5%,#0f4a4433 0%,transparent 70%)}
+html[data-theme="dark"] ::selection{background:#8d91f655;color:#fff}
+html[data-theme="dark"] *{scrollbar-color:#3b4258 transparent}
+html[data-theme="dark"] code{background:#1f2433;border-color:var(--ls-line-2);color:#c9cdf0}
+
+/* Schiene, Befehlsleiste */
+html[data-theme="dark"] .wb-rail-item:hover{background:#1d2131}
+html[data-theme="dark"] .wb-badge{background:var(--ls-panel);border-color:var(--ls-line-3);color:var(--ls-text-2)}
+html[data-theme="dark"] .avatar{background:linear-gradient(145deg,#2b2e5a,#123a37);color:#c9ccff;box-shadow:0 0 0 1px #3b4258 inset}
+html[data-theme="dark"] .wb-command{background:#12141cd9}
+html[data-theme="dark"] .tool-group{background:var(--ls-panel);border-color:var(--ls-line)}
+html[data-theme="dark"] .quick-app-button:hover{background:var(--ls-raised);color:var(--ls-accent-hi);box-shadow:none}
+html[data-theme="dark"] .local-pill{background:#0f2a20;border-color:#1f5a40;color:#7fe0b2}
+
+/* Arbeitsfläche */
+html[data-theme="dark"] .wb-bench .chat-header{background:#12141cb8}
+html[data-theme="dark"] #chat-provider{background-color:var(--ls-well);border-color:var(--ls-line-3);color:var(--ls-text);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a8abff' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")}
+html[data-theme="dark"] #chat-provider:hover,html[data-theme="dark"] .claude-chat-panel.worky-mode #chat-provider{border-color:#4d52a8}
+html[data-theme="dark"] #chat-provider option{background:#171a24;color:var(--ls-text)}
+html[data-theme="dark"] .chat-status{background:var(--ls-panel);border-color:var(--ls-line-2)}
+html[data-theme="dark"] .wb-context,html[data-theme="dark"] .wb-changes{background:#12141c99}
+html[data-theme="dark"] .wb-context>summary:hover,html[data-theme="dark"] .wb-changes>summary:hover,html[data-theme="dark"] .wb-section>summary:hover{background:#1a1e2b}
+html[data-theme="dark"] .chat-context-item{background:var(--ls-panel-2);border-color:var(--ls-line-2)}
+html[data-theme="dark"] .chat-message.user{background:linear-gradient(135deg,#252955,#143633);border-color:#373c74;color:#eef0ff}
+html[data-theme="dark"] .chat-message.assistant,html[data-theme="dark"] .chat-message.worky{background:var(--ls-panel);border-color:var(--ls-line-2)}
+html[data-theme="dark"] .chat-message.error,html[data-theme="dark"] .chat-message.worky.error{background:#2c1719;border-color:#5c2b31;color:#ffc9ce}
+html[data-theme="dark"] .wb-bench .chat-compose{background:var(--ls-panel);border-color:var(--ls-line-2);box-shadow:0 14px 40px #0008}
+html[data-theme="dark"] .wb-bench .chat-compose:focus-within{border-color:#555ab8;box-shadow:0 0 0 4px #8d91f622,0 14px 40px #0008}
+html[data-theme="dark"] .worky-chip,html[data-theme="dark"] .worky-chip.done{background:#1b1f2b;border-color:var(--ls-line-3);color:var(--ls-text-2)}
+html[data-theme="dark"] .worky-chip.active{background:#23264a;border-color:#4d52a8;color:#c9ccff}
+html[data-theme="dark"] .worky-chip.done:last-child{background:#11302c;border-color:#1f6b60;color:#7fe8d8}
+html[data-theme="dark"] .worky-chip.failed{background:#2c1719;border-color:#5c2b31;color:var(--ls-err)}
+html[data-theme="dark"] .wb-bench .chat-welcome strong{background:linear-gradient(90deg,#e8eaff,#a8abff 55%,#5fe3d2);-webkit-background-clip:text;background-clip:text;color:transparent}
+html[data-theme="dark"] .worky-logo{background:radial-gradient(120% 120% at 30% 15%,#a9acff 0%,#7478ec 38%,#5559d6 62%,#1fc1ae 100%)}
+html[data-theme="dark"] .wb-bench .chat-welcome::before{background:radial-gradient(closest-side,#8d91f640,#8d91f600)}
+
+/* Knöpfe und Eingaben */
+html[data-theme="dark"] .primary-button:disabled{background:#2e3350;color:#8b91a8}
+html[data-theme="dark"] .quiet-button,html[data-theme="dark"] .outline-button,html[data-theme="dark"] .tiny-action{background:var(--ls-panel-2);border-color:var(--ls-line-2);color:var(--ls-text)}
+html[data-theme="dark"] .quiet-button:hover,html[data-theme="dark"] .outline-button:hover{border-color:#4d52a8;background:#23264a;color:#c9ccff}
+html[data-theme="dark"] .tiny-action:hover{background:var(--ls-raised);border-color:var(--ls-line-3)}
+html[data-theme="dark"] .router-input-row textarea,html[data-theme="dark"] .route-result textarea,html[data-theme="dark"] .idea-dialog input,html[data-theme="dark"] .idea-dialog textarea,html[data-theme="dark"] .plan-dialog textarea{background:var(--ls-well);border-color:var(--ls-line-2);color:var(--ls-text)}
+html[data-theme="dark"] .router-input-row textarea:focus,html[data-theme="dark"] .route-result textarea:focus,html[data-theme="dark"] .idea-dialog input:focus,html[data-theme="dark"] .idea-dialog textarea:focus,html[data-theme="dark"] .plan-dialog textarea:focus{border-color:#555ab8;box-shadow:0 0 0 4px #8d91f622}
+html[data-theme="dark"] .route-result textarea{color:#d6d9ef;background:#12141c}
+
+/* Inspektor */
+html[data-theme="dark"] .wb-inspector{background:var(--ls-sidebar)}
+html[data-theme="dark"] .wb-project-card{background:linear-gradient(160deg,#1d2040 0%,#171a24 55%,#10292a 100%)}
+html[data-theme="dark"] .tower{background:linear-gradient(90deg,#252a3b,#323950 50%,#252a3b);border-color:#3b4258}
+html[data-theme="dark"] .tower i{background:#2c3245;border-bottom-color:#3b4258}
+html[data-theme="dark"] .tower b{background:repeating-linear-gradient(0deg,#343b52 0 5px,#20253a 5px 8px);border-color:#3b4258}
+html[data-theme="dark"] .factory-body{background:linear-gradient(180deg,#2c3246,#1f2435);border-color:#3b4258}
+html[data-theme="dark"] .windows i{border-color:#2fd3be88;background:linear-gradient(135deg,#2fd3be44,#2fd3be10);box-shadow:0 0 14px #2fd3be33}
+html[data-theme="dark"] .door{background:#1a1e2c;border-color:#3b4258}
+html[data-theme="dark"] .belt{background:repeating-linear-gradient(90deg,#4a5168 0 11px,#1f2435 11px 17px)}
+html[data-theme="dark"] .sun-glow{background:#2fd3be22}
+html[data-theme="dark"] .stat-card{background:var(--ls-panel)}
+html[data-theme="dark"] .stat-card:nth-child(2)>strong{color:#5fe3d2}
+html[data-theme="dark"] .wb-section .panel,html[data-theme="dark"] .panel{background:var(--ls-panel);border-color:var(--ls-line);box-shadow:none}
+html[data-theme="dark"] .notice,html[data-theme="dark"] .task-notice{background:#1c1f3a;border-color:#2f3466;color:#c3c6e8}
+html[data-theme="dark"] .notice strong{color:#e8eaff}
+html[data-theme="dark"] .notice-icon{background:#262a55;color:#a8abff}
+html[data-theme="dark"] .idea-card{background:var(--ls-panel-2);border-color:var(--ls-line-2)}
+html[data-theme="dark"] .idea-card:hover{background:#1f2335;border-color:#3d4280}
+html[data-theme="dark"] .idea-chip{background:#2b2414;border-color:#5a4720;color:#ecc979}
+html[data-theme="dark"] .empty-icon{background:#23264a;border-color:#3d4280}
+html[data-theme="dark"] .task-total,html[data-theme="dark"] .task-area{background:var(--ls-panel-2);border-color:var(--ls-line-2);color:var(--ls-text-2)}
+html[data-theme="dark"] .task-card{background:#211d14;border-color:#4a3d1f}
+html[data-theme="dark"] .task-card.approved{background:#11251c;border-color:#235a40}
+html[data-theme="dark"] .task-status,html[data-theme="dark"] .plan-state{color:#ecc979}
+html[data-theme="dark"] .approved-status,html[data-theme="dark"] .approved-note,html[data-theme="dark"] .plan-state.plan-approved{color:#6fdfa9}
+html[data-theme="dark"] .task-card-actions{border-top-color:#ffffff10}
+html[data-theme="dark"] .task-card-actions .approve-task{background:#23264a;border-color:#4d52a8;color:#c9ccff}
+html[data-theme="dark"] .local-only-tag,html[data-theme="dark"] .offline-tag,html[data-theme="dark"] .route-mode,html[data-theme="dark"] .provider-state{background:var(--ls-panel-2);border-color:var(--ls-line-2);color:var(--ls-text-2)}
+html[data-theme="dark"] .provider-logo{border-color:var(--ls-line-3)}
+html[data-theme="dark"] .provider-logo.claude{background:#2e2019;color:#f0a98a}
+html[data-theme="dark"] .provider-logo.gemini,html[data-theme="dark"] .route-provider-logo,html[data-theme="dark"] .route-provider-logo.gemini{background:#23264a;color:#a8abff;border-color:#3d4280}
+html[data-theme="dark"] .provider-logo.codex,html[data-theme="dark"] .route-provider-logo.codex{background:#1f2433;color:#c9cde0}
+html[data-theme="dark"] .provider-logo.chatgpt,html[data-theme="dark"] .route-provider-logo.images{background:#11302c;color:#5fe3d2}
+html[data-theme="dark"] .image-state{color:#5fe3d2}
+html[data-theme="dark"] .obsidian-card{background:linear-gradient(160deg,#211b36,#171a24);border-color:#3a2f5c}
+html[data-theme="dark"] .obsidian-card p{color:#c2bbdb}
+html[data-theme="dark"] .obsidian-card code{background:#2a2245;border-color:#3a2f5c;color:#d6c8ff}
+html[data-theme="dark"] .obsidian-mark{background:#2a2245;border-color:#3a2f5c}
+html[data-theme="dark"] .vault-button{background:#1d1930;border-color:#3a2f5c;color:#ddd5f5}
+html[data-theme="dark"] .vault-button:hover{background:#261f40;border-color:#5b4a92}
+html[data-theme="dark"] .vault-note{color:#9e97b8}
+html[data-theme="dark"] .page-footer b{color:#4a5168}
+
+/* Änderungen, Dialoge, Freigaben, Toast */
+html[data-theme="dark"] .project-diff-view pre,html[data-theme="dark"] .vault-preview-content{background:#0c0e14;border-color:var(--ls-line);color:#d6d9ef}
+html[data-theme="dark"] .idea-dialog{background:#171a24;border-color:var(--ls-line-3);box-shadow:0 30px 80px #000c}
+html[data-theme="dark"] .idea-dialog::backdrop{background:#05060acc}
+html[data-theme="dark"] .close-button:hover{background:var(--ls-raised)}
+html[data-theme="dark"] .plan-task-name{background:var(--ls-panel-2);border-color:var(--ls-line-2)}
+html[data-theme="dark"] .plan-safety,html[data-theme="dark"] .vault-preview-warning{background:#2b2414;border-color:#5a4720;color:#ecd39a}
+html[data-theme="dark"] .vault-preview-dialog .dialog-footer{background:#171a24}
+html[data-theme="dark"] .approval-card{background:#171a24;border-color:#4d52a8;box-shadow:0 18px 50px #000a}
+html[data-theme="dark"] .approval-head strong{color:#c9ccff}
+html[data-theme="dark"] .approval-card pre{background:#0c0e14;border-color:var(--ls-line);color:#d6d9ef}
+html[data-theme="dark"] .toast{background:#e8eaf4;color:#12141c}
+
+/* Umschalter Hell/Nacht */
+.theme-toggle{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;flex:0 0 36px;border:1px solid var(--ls-line-2);border-radius:10px;background:var(--ls-panel);color:var(--ls-text-2);cursor:pointer;transition:background-color .16s var(--ls-ease),color .16s var(--ls-ease),border-color .16s var(--ls-ease)}
+.theme-toggle:hover{color:var(--ls-accent-hi);border-color:var(--ls-line-3)}
+.theme-toggle svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.theme-toggle .icon-sun{display:none}
+html[data-theme="dark"] .theme-toggle .icon-sun{display:block}
+html[data-theme="dark"] .theme-toggle .icon-moon{display:none}
+html.theme-switching *,html.theme-switching *::before,html.theme-switching *::after{transition:background-color .3s ease,border-color .3s ease,color .3s ease!important}

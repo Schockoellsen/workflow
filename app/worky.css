@@ -1,0 +1,31 @@
+/* Worky – das KI-Team der Werkstatt */
+.worky-logo{position:relative;flex:0 0 auto;width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:conic-gradient(from 200deg,#c6f36c,#7fd6c2,#a8b4ff,#e0a27c,#c6f36c);box-shadow:0 0 18px #c6f36c33;animation:worky-spin 9s linear infinite}
+.worky-logo::after{content:'';position:absolute;inset:3px;border-radius:9px;background:#141a15}
+.worky-logo i{position:absolute;z-index:1;width:6px;height:6px;border-radius:50%;background:#c6f36c;animation:worky-blink 1.6s ease-in-out infinite;animation-play-state:paused}
+.worky-logo i:nth-child(1){transform:translate(-7px,1px);background:#c6f36c}
+.worky-logo i:nth-child(2){transform:translate(0,-5px);background:#a8b4ff;animation-delay:.2s}
+.worky-logo i:nth-child(3){transform:translate(7px,1px);background:#e0a27c;animation-delay:.4s}
+.worky-logo.small{width:22px;height:22px;border-radius:7px}
+.worky-logo.small::after{inset:2px;border-radius:6px}
+.worky-logo.small i{width:4px;height:4px}
+.worky-logo.small i:nth-child(1){transform:translate(-5px,1px)}
+.worky-logo.small i:nth-child(2){transform:translate(0,-3px)}
+.worky-logo.small i:nth-child(3){transform:translate(5px,1px)}
+.chat-message.worky{position:relative;max-width:min(92%,760px);background:linear-gradient(#1b231c,#1b231c) padding-box,linear-gradient(120deg,#c6f36c88,#a8b4ff66,#e0a27c66) border-box;border:1px solid transparent;border-radius:10px;padding:10px 12px 9px}
+.chat-message.worky.thinking .worky-logo i{animation-play-state:running}
+.chat-message.worky.error{background:linear-gradient(#30221f,#30221f) padding-box,linear-gradient(120deg,#dc8d79,#63423b) border-box}
+.worky-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.worky-head strong{font:800 11px var(--display);letter-spacing:.4px;background:linear-gradient(90deg,#c6f36c,#a8b4ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.worky-body{white-space:pre-wrap;overflow-wrap:anywhere}
+.worky-team{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.worky-team:empty{display:none}
+.worky-chip{font-size:8px;letter-spacing:.3px;border:1px solid #39443b;border-radius:20px;padding:3px 8px;color:#a9b4aa;background:#161c17}
+.worky-chip.active{border-color:#829d60;color:#e7f7d5;animation:worky-pulse 1.2s ease-in-out infinite}
+.worky-chip.done{border-color:#4d6a3d;color:#c6f36c}
+.worky-chip.failed{border-color:#63423b;color:#e8aa9a}
+.claude-chat-panel.worky-mode{background:linear-gradient(160deg,#1a221b 0%,#181e19 55%,#1b1d26 100%)}
+.claude-chat-panel.worky-mode #chat-provider{border-color:#829d60;color:#e7f7d5}
+@keyframes worky-spin{to{filter:hue-rotate(360deg)}}
+@keyframes worky-blink{0%,100%{opacity:.35}50%{opacity:1}}
+@keyframes worky-pulse{0%,100%{box-shadow:0 0 0 0 #c6f36c00}50%{box-shadow:0 0 0 3px #c6f36c22}}
+@media (prefers-reduced-motion:reduce){.worky-logo,.worky-logo i,.worky-chip.active{animation:none}}

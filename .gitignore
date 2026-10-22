@@ -1,0 +1,7 @@
+# Lokale Schlüssel (OpenRouter, Freesound) – nie committen
+.env.local
+app/.env.local
+# Nur auf diesem PC: Projektliste und gemerkte Chats
+app/daten/
+app/.werkstatt-state.json
+node_modules/
