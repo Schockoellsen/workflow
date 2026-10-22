@@ -1,0 +1,9 @@
+.approval-dock{position:fixed;right:18px;bottom:18px;z-index:20;display:grid;gap:10px;width:min(440px,calc(100vw - 32px));max-height:calc(100vh - 36px);overflow-y:auto}
+.approval-card{border:1px solid #8a6d35;background:#221d14;border-radius:10px;padding:13px 14px;box-shadow:0 14px 50px #000a}
+.approval-head{display:flex;flex-direction:column;gap:4px}
+.approval-head strong{font:700 12px var(--display);color:#f1dcae}
+.approval-timer{font-size:9px;color:#b8a27a}
+.approval-card pre{margin:9px 0 10px;max-height:340px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid #3e3626;border-radius:6px;padding:8px;background:#15120c;color:#d7cdb8;font:9px/1.5 Consolas,monospace}
+.approval-actions{display:flex;justify-content:flex-end;gap:8px}
+.approval-actions button{font-size:10px;padding:8px 12px}
+.approval-actions button:disabled{opacity:.5;cursor:wait;transform:none}

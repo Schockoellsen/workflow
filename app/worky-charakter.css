@@ -1,0 +1,231 @@
+/* Worky als Charakter: ein freundliches, lebendiges Gesicht statt eines Logos.
+   Gleiches Markup wie bisher (.worky-logo mit drei <i>): 1 = linkes Auge, 2 = Mund, 3 = rechtes Auge.
+   Größen über font-size (1em = Kopfgröße). Bewegung: schweben, atmen, blinzeln; beim Nachdenken
+   schaut Worky umher und der Leuchtring dreht sich. Nur CSS, keine Logik. */
+
+.worky-logo{
+  --wk-size:34px;
+  position:relative;flex:0 0 auto;display:block;box-sizing:border-box;
+  width:1em;height:1em;font-size:var(--wk-size);padding:0;
+  border-radius:38%;
+  background:radial-gradient(120% 120% at 30% 15%,#9a9dff 0%,#6a6ee6 38%,#4e52cf 62%,#17b4a6 100%);
+  box-shadow:0 .08em .2em #4e52cf40,0 0 0 .02em #ffffff70 inset,0 -.06em .12em #00000026 inset;
+  animation:wk-breathe 4.8s ease-in-out infinite;
+  filter:none;
+}
+.worky-logo::after{content:'';position:absolute;inset:0;border-radius:inherit;background:radial-gradient(60% 45% at 30% 18%,#ffffff8c 0%,#ffffff00 70%);pointer-events:none}
+.worky-logo::before{content:none}
+.worky-logo i{
+  position:absolute;display:block;z-index:1;margin:0;transform:none;border-radius:999px;background:#ffffff;opacity:1;
+  animation:none;box-shadow:0 .02em .04em #1d223630;
+}
+/* Augen */
+.worky-logo i:nth-child(1),.worky-logo i:nth-child(3){
+  top:.33em;width:.13em;height:.21em;background:#ffffff;
+  animation:wk-blink 5.2s infinite;transform-origin:50% 60%;
+}
+.worky-logo i:nth-child(1){left:.28em}
+.worky-logo i:nth-child(3){right:.28em;animation-delay:.04s}
+/* Mund */
+.worky-logo i:nth-child(2){
+  top:.6em;left:50%;width:.26em;height:.12em;margin-left:-.13em;
+  background:transparent;border:0;border-bottom:.055em solid #ffffff;border-radius:0 0 .2em .2em;box-shadow:none;
+  transition:all .25s ease;
+}
+
+/* Kleine Köpfe (Chat-Blasen) */
+.worky-logo.small{--wk-size:24px}
+/* Kopf in der Kopfzeile der Arbeitsfläche */
+.wb-chat-identity .worky-logo{--wk-size:42px;width:1em;height:1em}
+/* Großer Worky auf dem Startbildschirm */
+.wb-bench .chat-welcome .worky-logo,.chat-welcome .worky-logo{
+  --wk-size:112px;width:1em;height:1em;border-radius:38%;
+  animation:wk-float 4.2s ease-in-out infinite,wk-breathe 4.8s ease-in-out infinite;
+  margin:28px 0 10px;
+}
+.chat-welcome .worky-logo::after{inset:0;border-radius:inherit}
+.chat-welcome .worky-logo::before{
+  content:'';position:absolute;inset:-.16em;border-radius:44%;z-index:-1;
+  background:conic-gradient(from 0deg,#7b7ff000,#7b7ff0aa,#14b3a5aa,#7b7ff000 70%);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - .035em),#000 calc(100% - .03em));
+  mask:radial-gradient(farthest-side,transparent calc(100% - .035em),#000 calc(100% - .03em));
+  animation:wk-spin 7s linear infinite;
+}
+.wb-bench .chat-welcome .worky-logo i:nth-child(1),.wb-bench .chat-welcome .worky-logo i:nth-child(3){width:.12em;height:.2em}
+.wb-bench .chat-welcome .worky-logo i:nth-child(1){transform:none}
+.wb-bench .chat-welcome .worky-logo i:nth-child(2){transform:none}
+.wb-bench .chat-welcome .worky-logo i:nth-child(3){transform:none}
+/* Schatten unter dem schwebenden Worky */
+.chat-welcome{position:relative}
+.wb-bench .chat-welcome::before{content:'';position:absolute;top:150px;left:50%;width:80px;height:12px;margin-left:-40px;border-radius:50%;background:radial-gradient(closest-side,#4e52cf33,#4e52cf00);animation:wk-shadow 4.2s ease-in-out infinite}
+.wb-bench .chat-welcome strong{font-size:30px;letter-spacing:-.3px;background:linear-gradient(90deg,#2a2f6b,#4a4ec4 55%,#0f8f84);-webkit-background-clip:text;background-clip:text;color:transparent}
+.wb-bench .chat-welcome p{font-size:15px;color:var(--ls-text-2);max-width:480px;margin-left:auto;margin-right:auto}
+.wb-bench .chat-welcome{animation:wk-rise .6s var(--ls-ease) both}
+
+/* Nachdenken: Blase mit .thinking oder irgendwo eine laufende Worky-Antwort */
+.chat-message.worky.thinking .worky-logo,
+.wb-app:has(.chat-message.worky.thinking) .wb-chat-identity .worky-logo{animation:wk-think-bob 1.1s ease-in-out infinite}
+.chat-message.worky.thinking .worky-logo i:nth-child(1),.chat-message.worky.thinking .worky-logo i:nth-child(3),
+.wb-app:has(.chat-message.worky.thinking) .wb-chat-identity .worky-logo i:nth-child(1),
+.wb-app:has(.chat-message.worky.thinking) .wb-chat-identity .worky-logo i:nth-child(3){animation:wk-look 2.4s ease-in-out infinite}
+.chat-message.worky.thinking .worky-logo i:nth-child(2),
+.wb-app:has(.chat-message.worky.thinking) .wb-chat-identity .worky-logo i:nth-child(2){width:.12em;height:.12em;margin-left:-.06em;top:.62em;border:.045em solid #ffffff;border-radius:50%}
+.wb-app:has(.chat-message.worky.thinking) .wb-chat-identity .worky-logo{box-shadow:0 0 0 .08em #5b5fd622,0 0 .4em #5b5fd655,0 0 0 .02em #ffffff70 inset}
+/* Fehler: Worky schaut betrübt */
+.chat-message.worky.error .worky-logo{background:radial-gradient(120% 120% at 30% 15%,#c3c6d8,#8d93ad 60%,#6b7190)}
+.chat-message.worky.error .worky-logo i:nth-child(2){border-bottom:0;border-top:.05em solid #ffffff;border-radius:.2em .2em 0 0;top:.66em}
+
+/* Kopfzeile der Arbeitsfläche etwas lebendiger */
+.wb-chat-identity{gap:14px}
+.wb-chat-identity .section-kicker{color:var(--ls-accent)}
+
+/* Antworten erscheinen weich */
+.chat-message.worky{animation:wk-pop .32s var(--ls-ease) both}
+.chat-message.user{animation:wk-pop .24s var(--ls-ease) both}
+
+@keyframes wk-blink{0%,90%,100%{transform:scaleY(1)}93%{transform:scaleY(.1)}96%{transform:scaleY(1)}}
+@keyframes wk-look{0%,100%{transform:translateX(0)}25%{transform:translateX(-.05em) translateY(-.02em)}60%{transform:translateX(.05em) translateY(-.02em)}}
+@keyframes wk-breathe{0%,100%{box-shadow:0 .08em .2em #4e52cf40,0 0 0 .02em #ffffff70 inset,0 -.06em .12em #00000026 inset}50%{box-shadow:0 .14em .36em #4e52cf55,0 0 0 .02em #ffffff70 inset,0 -.06em .12em #00000026 inset}}
+@keyframes wk-float{0%,100%{transform:translateY(0) rotate(-1.5deg)}50%{transform:translateY(-10px) rotate(1.5deg)}}
+@keyframes wk-shadow{0%,100%{transform:scaleX(1);opacity:1}50%{transform:scaleX(.75);opacity:.6}}
+@keyframes wk-spin{to{transform:rotate(360deg)}}
+@keyframes wk-think-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+@keyframes wk-pop{from{transform:translateY(6px) scale(.985)}to{transform:none}}
+@keyframes wk-rise{from{transform:translateY(10px)}to{transform:none}}
+
+@media (prefers-reduced-motion:reduce){
+  .worky-logo,.worky-logo i,.chat-welcome .worky-logo,.chat-welcome .worky-logo::before,.wb-bench .chat-welcome::before,.chat-message.worky,.chat-message.user,.wb-bench .chat-welcome{animation:none!important}
+}
+@media (max-width:640px){
+  .wb-bench .chat-welcome .worky-logo,.chat-welcome .worky-logo{--wk-size:84px;margin-top:14px}
+  .wb-bench .chat-welcome::before{top:108px}
+  .wb-bench .chat-welcome strong{font-size:23px}
+}
+
+/* Feinschliff Gesicht: breiteres Lächeln und rosige Wangen */
+.worky-logo i:nth-child(2){top:.57em;width:.3em;height:.15em;margin-left:-.15em;background:transparent!important;border-bottom:.06em solid #ffffff;border-radius:0 0 .3em .3em;overflow:visible}
+.worky-logo i:nth-child(2)::before,.worky-logo i:nth-child(2)::after{content:'';position:absolute;top:-.02em;width:.1em;height:.06em;border-radius:50%;background:#ffb4c8;opacity:.75}
+.worky-logo i:nth-child(2)::before{left:-.17em}
+.worky-logo i:nth-child(2)::after{right:-.17em}
+.worky-logo.small i:nth-child(2)::before,.worky-logo.small i:nth-child(2)::after{display:none}
+.chat-message.worky.thinking .worky-logo i:nth-child(2)::before,.chat-message.worky.thinking .worky-logo i:nth-child(2)::after,
+.wb-app:has(.chat-message.worky.thinking) .wb-chat-identity .worky-logo i:nth-child(2)::before,
+.wb-app:has(.chat-message.worky.thinking) .wb-chat-identity .worky-logo i:nth-child(2)::after{display:none}
+.wb-bench .chat-welcome .worky-logo,.chat-welcome .worky-logo{--wk-size:136px}
+.wb-bench .chat-welcome::before{top:178px;width:96px;margin-left:-48px}
+@media (max-width:640px){.wb-bench .chat-welcome .worky-logo,.chat-welcome .worky-logo{--wk-size:92px}.wb-bench .chat-welcome::before{top:118px}}
+
+/* Formatierte Antworten (markdown.js) */
+.md{white-space:normal!important;line-height:1.7}
+.md>*:first-child{margin-top:0}
+.md>*:last-child{margin-bottom:0}
+.md p{margin:0 0 .7em}
+.md h3,.md h4,.md h5,.md h6{margin:1em 0 .45em;font-family:var(--ls-display);color:var(--ls-text);line-height:1.25}
+.md h3{font-size:18px}.md h4{font-size:16px}.md h5,.md h6{font-size:14.5px}
+.md ul,.md ol{margin:0 0 .8em;padding-left:1.35em}
+.md li{margin:.22em 0;padding-left:.15em}
+.md li::marker{color:var(--ls-accent)}
+.md strong{font-weight:650;color:var(--ls-text)}
+.md em{font-style:italic}
+.md a{color:var(--ls-accent-hi);text-decoration:underline;text-decoration-color:#5b5fd655;text-underline-offset:2px}
+.md hr{border:0;height:1px;background:var(--ls-line);margin:1em 0}
+.md blockquote{margin:0 0 .8em;padding:.5em .9em;border-left:3px solid var(--ls-mint);background:var(--ls-mint-soft);border-radius:0 8px 8px 0;color:var(--ls-text-2)}
+.md code{font:500 .9em var(--ls-mono);background:var(--ls-accent-soft);border:1px solid #d7daf8;color:#3a3ea8;border-radius:5px;padding:.08em .35em}
+.md-code{position:relative;margin:.2em 0 .9em;border:1px solid #262b3d;border-radius:10px;background:#141826;overflow:hidden}
+.md-code pre{margin:0;padding:14px 16px;overflow-x:auto;font:12.5px/1.65 var(--ls-mono);color:#dfe3f5;white-space:pre}
+.md-code code{background:none;border:0;color:inherit;padding:0;font:inherit}
+.md-lang{position:absolute;top:6px;right:10px;font:600 10px var(--ls-mono);letter-spacing:.8px;text-transform:uppercase;color:#8d93b8}
+.md-activity{margin-top:.9em;padding:.6em .8em;border:1px dashed var(--ls-line-2);border-radius:8px;font-size:12px;color:var(--ls-muted)}
+.md-activity span{display:block;font-weight:600;color:var(--ls-text-2);margin-bottom:.2em}
+.md-activity ul{margin:0;padding-left:1.2em}
+html[data-theme="dark"] .md code{background:#23264a;border-color:#3d4280;color:#c9ccff}
+html[data-theme="dark"] .md-code{background:#0c0e14;border-color:#2e3446}
+html[data-theme="dark"] .md blockquote{background:#11302c;color:#c9e9e4}
+html[data-theme="dark"] .md a{color:#a8abff}
+.md .md-code code,html[data-theme="dark"] .md .md-code code{background:none;border:0;color:inherit;padding:0;border-radius:0}
+
+/* Worky-Team: Spezialist in der Antwort sichtbar */
+.chat-message.worky.has-agent::before{background:var(--agent-color,#5b5fd6)}
+.worky-agent{display:inline-flex;align-items:center;gap:4px;margin-left:4px;padding:2px 9px;border-radius:999px;font:600 11.5px var(--ls-font);color:#fff;background:var(--agent-color,#5b5fd6);box-shadow:0 2px 8px #1d22361f}
+.worky-agent::before{content:'→';margin-right:4px;opacity:.75;font-weight:500}
+#chat-provider optgroup{font-weight:600;color:var(--ls-muted)}
+.md-table{margin:.2em 0 .9em;overflow-x:auto;border:1px solid var(--ls-line);border-radius:10px}
+.md-table table{border-collapse:collapse;width:100%;font-size:13px}
+.md-table th,.md-table td{padding:7px 11px;text-align:left;border-bottom:1px solid var(--ls-line);white-space:nowrap}
+.md-table th{background:var(--ls-panel-2);font-weight:650;color:var(--ls-text);font-size:12px;letter-spacing:.2px}
+.md-table tr:last-child td{border-bottom:0}
+.md-table tbody tr:nth-child(even) td{background:#5b5fd608}
+
+/* Stufe 4: Schnell-Aufträge, Stopp-Knopf, Neuer Chat */
+.worky-quick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.worky-quick button{font:inherit;font-size:12px;line-height:1.2;padding:5px 10px;border-radius:999px;border:1px solid var(--ls-line-2);background:var(--ls-panel-2);color:var(--ls-text-2);cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.worky-quick button:hover:not(:disabled){border-color:var(--ls-accent);color:var(--ls-accent-hi);background:var(--ls-accent-soft)}
+.worky-quick button:focus-visible{outline:2px solid var(--ls-accent);outline-offset:2px}
+.worky-quick button:disabled{opacity:.5;cursor:default}
+.chat-compose-footer #worky-new-chat{margin-left:auto;white-space:nowrap}
+.worky-stop{border-color:var(--ls-err);color:var(--ls-err)}
+.worky-stop:hover{background:var(--ls-err);color:#fff}
+.chat-message.worky.stopped{opacity:.8}
+.worky-restored{font-size:12px;color:var(--ls-muted);text-align:center;margin:4px 0 10px}
+.worky-tools{display:grid;gap:4px;margin-bottom:12px;padding:10px 12px;border:1px solid var(--ls-line-2);border-radius:12px;background:var(--ls-panel-2)}
+.worky-tools > small{color:var(--ls-muted);font-size:12px}
+.worky-tools .worky-quick{margin:6px 0 0}
+
+/* Prompt-Ersteller (ersetzt die KI-Empfehlung) */
+.prompt-builder .prompt-target-label{display:block;font-size:12px;font-weight:600;color:var(--ls-text-2);margin:4px 0 4px}
+.prompt-builder #prompt-target{width:100%;font:inherit;font-size:13px;padding:8px 10px;border-radius:10px;border:1px solid var(--ls-line-2);background:var(--ls-panel);color:var(--ls-text);margin-bottom:8px}
+.prompt-builder #prompt-target:focus-visible{outline:2px solid var(--ls-accent);outline-offset:1px}
+.prompt-builder .prompt-status{min-height:1.2em;margin:6px 0 0;font-size:12px;color:var(--ls-muted)}
+.prompt-builder #prompt-result{width:100%;font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.45;resize:vertical}
+.prompt-builder .route-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.prompt-builder .route-actions span{flex:1 1 180px}
+
+.worky-after{margin-top:10px}
+
+/* Bilder im Chat: Anhänge beim Schreiben und Bilder in den Blasen */
+.worky-attachments{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.worky-attachment{position:relative;display:inline-block}
+.worky-attachment img{width:72px;height:54px;object-fit:cover;border-radius:8px;border:1px solid var(--ls-line-2);display:block}
+.worky-attachment button{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:1px solid var(--ls-line-2);background:var(--ls-panel);color:var(--ls-text-2);cursor:pointer;line-height:1;font-size:13px;padding:0}
+.worky-gallery{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.worky-gallery img{max-width:min(420px,100%);max-height:280px;border-radius:10px;border:1px solid var(--ls-line-2);display:block}
+.chat-message.user .worky-gallery img{max-width:220px;max-height:160px}
+
+/* Rückgängig-Knopf unter einer Antwort */
+.worky-undo{align-items:center}
+.worky-undo-note{font-size:12px;color:var(--ls-muted)}
+
+/* Live-Checkliste (Workys Aufgabenliste) */
+.worky-todos{margin:6px 0 10px;padding:10px 12px;border:1px solid var(--ls-line-2);border-radius:10px;background:var(--ls-panel-2)}
+.worky-todos-title{font-size:12px;font-weight:600;color:var(--ls-text-2);margin-bottom:6px}
+.worky-todos ol{margin:0;padding-left:4px;list-style:none;display:grid;gap:3px;font-size:13px}
+.worky-todos .todo-completed{color:var(--ls-muted);text-decoration:line-through}
+.worky-todos .todo-in_progress{font-weight:600;color:var(--ls-accent-hi)}
+
+/* Sound-Vorschau im Chat */
+.md-audio{display:block;width:min(320px,100%);height:32px;margin:4px 0 8px}
+
+/* UI-Entwurf von Worky als Vorschau im Chat */
+.md-mockup{display:block;width:100%;height:420px;border:1px solid var(--ls-line-2);border-radius:12px;background:#fff;margin:10px 0 4px}
+.md-mockup-link{font-size:12px}
+
+/* Sprechen statt tippen */
+#worky-mic.listening{background:var(--ls-err);color:#fff;border-color:var(--ls-err);animation:hell-chip 1.2s ease-in-out infinite}
+
+/* Mehrere Chats: Auswahl, Suche, Löschen */
+.worky-chatbar{display:flex;gap:8px;align-items:center;margin:0 0 8px}
+.worky-chatbar select{flex:1 1 220px;min-width:0;font:inherit;font-size:13px;padding:6px 8px;border-radius:10px;border:1px solid var(--ls-line-2);background:var(--ls-panel);color:var(--ls-text)}
+.worky-chatbar input{flex:0 1 200px;min-width:0;font:inherit;font-size:13px;padding:6px 10px;border-radius:10px;border:1px solid var(--ls-line-2);background:var(--ls-panel);color:var(--ls-text)}
+@media (max-width:640px){.worky-chatbar{flex-wrap:wrap}.worky-chatbar input{flex:1 1 100%}}
+
+/* Verbrauch eines Auftrags (leise, ganz rechts) */
+.worky-chip.usage{opacity:.75;margin-left:auto}
+
+/* Fehler-Wächter */
+.worky-guard-toggle{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--ls-text-2);white-space:nowrap;cursor:pointer}
+.worky-guard-alert{margin:0 0 8px;padding:10px 12px;border:1px solid var(--ls-err);border-radius:12px;background:color-mix(in srgb,var(--ls-err) 10%,var(--ls-panel));color:var(--ls-text)}
+.worky-guard-alert ul{margin:6px 0 8px;padding-left:18px;font-family:ui-monospace,Consolas,monospace;font-size:12px;overflow-wrap:anywhere}
+.worky-guard-actions{display:flex;gap:8px;align-items:center}
+
+/* Fließband-Knopf hervorheben */
+.worky-quick button.worky-assembly{border-color:var(--ls-accent);color:var(--ls-accent-hi);font-weight:600}
