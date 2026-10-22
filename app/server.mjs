@@ -2,9 +2,9 @@ import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
 import { createConnection } from 'node:net';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { appendFile, lstat, mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -1691,24 +1691,48 @@ function writeProjects(store) {
   writeFileSync(PROJECTS_FILE, JSON.stringify(store, null, 2), 'utf8');
 }
 
-// Erster Start: Industrial Empire liegt bei GitHub Desktop direkt neben dem workflow-Ordner
-function firstStartProjects() {
-  const projects = [];
-  for (const candidate of [path.resolve(HERE, '..', '..', 'industrial-empire'), path.resolve(HERE, '..', '..', 'Industrial-Empire')]) {
-    if (!folderExists(candidate) || !existsSync(path.join(candidate, 'default.project.json'))) continue;
-    projects.push({
-      id: 'industrial-empire', name: 'Industrial Empire', kind: 'roblox', root: candidate,
-      description: 'Roblox-Fabrik-Aufbauspiel: Bergwerk, Erze, Maschinen, Fabrikhalle',
-      placeId: INDUSTRIAL_EMPIRE_PLACE_ID, universeId: INDUSTRIAL_EMPIRE_UNIVERSE_ID, addedAt: new Date().toISOString()
-    });
-    break;
+// Industrial Empire erkennt Workflow am Inhalt (Rojo-Projekt plus alte Werkstatt), egal wie der Ordner heißt
+function isIndustrialEmpire(folder) {
+  return existsSync(path.join(folder, 'default.project.json')) && existsSync(path.join(folder, 'workshop-prototype', 'server.mjs'));
+}
+
+function industrialEmpireProject(folder) {
+  return {
+    id: 'industrial-empire', name: 'Industrial Empire', kind: 'roblox', root: folder,
+    description: 'Roblox-Fabrik-Aufbauspiel: Bergwerk, Erze, Maschinen, Fabrikhalle',
+    placeId: INDUSTRIAL_EMPIRE_PLACE_ID, universeId: INDUSTRIAL_EMPIRE_UNIVERSE_ID, addedAt: new Date().toISOString()
+  };
+}
+
+// Erster Start (oder leere Liste): Industrial Empire suchen. Zuerst neben dem workflow-Ordner (GitHub Desktop legt
+// alle Repos in denselben Ordner), dann an den üblichen Orten von GitHub Desktop.
+function findIndustrialEmpire() {
+  const parents = [path.resolve(HERE, '..', '..')];
+  for (const documents of ['Documents', 'Dokumente', path.join('OneDrive', 'Documents'), path.join('OneDrive', 'Dokumente')]) {
+    parents.push(path.join(homedir(), documents, 'GitHub'));
   }
+  for (const parent of parents) {
+    let entries = [];
+    try { entries = readdirSync(parent, { withFileTypes: true }); } catch { continue; }
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const folder = path.join(parent, entry.name);
+      if (isIndustrialEmpire(folder)) return folder;
+    }
+  }
+  return null;
+}
+
+function firstStartProjects() {
+  const folder = findIndustrialEmpire();
+  const projects = folder ? [industrialEmpireProject(folder)] : [];
   return { active: projects[0]?.id || null, projects };
 }
 
 let projectStore = readProjects();
-if (!projectStore) {
+if (!projectStore || !projectStore.projects.length) {
   projectStore = firstStartProjects();
+  if (projectStore.projects.length) console.log(`Industrial Empire gefunden: ${projectStore.projects[0].root}`);
   try { writeProjects(projectStore); } catch (error) { console.error(`Projektliste nicht gespeichert: ${error.message}`); }
 }
 {
@@ -1763,6 +1787,8 @@ async function handleProjects(request, response, pathname) {
       id: projectSlug(name, new Set(projectStore.projects.map((item) => item.id))), name, kind, root,
       description: typeof data.description === 'string' ? data.description.trim().slice(0, 200) : '', addedAt: new Date().toISOString()
     };
+    // Von Hand hinzugefügtes Industrial Empire bekommt trotzdem seinen Roblox-Ort (Studio öffnet ihn direkt)
+    if (isIndustrialEmpire(root)) Object.assign(project, { kind: 'roblox', placeId: INDUSTRIAL_EMPIRE_PLACE_ID, universeId: INDUSTRIAL_EMPIRE_UNIVERSE_ID, description: project.description || industrialEmpireProject(root).description });
     projectStore.projects.push(project);
     writeProjects(projectStore);
     return sendJson(response, 200, { ...listing(), added: project.id });

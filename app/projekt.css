@@ -24,3 +24,5 @@
 .project-add label span{color:var(--ls-muted,#6a7189)}
 .project-add input,.project-add select{width:100%;box-sizing:border-box;min-height:42px;padding:9px 12px;border-radius:10px;border:1px solid var(--ls-line-2,#dcdfea);background:var(--ls-well,#ffffff);color:var(--ls-text,#1d2236);font:inherit}
 .project-hint{display:block;margin-top:4px;color:var(--ls-muted,#6a7189);font-size:12px}
+/* Studio/Rojo bei Nicht-Roblox-Projekten ausblenden (die Knöpfe haben sonst display:inline-flex) */
+[data-nur-roblox][hidden]{display:none !important}
