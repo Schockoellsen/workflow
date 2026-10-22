@@ -96,8 +96,93 @@
   };
 
   // ---------- Seite „Worky lernt“ ----------
-  const TAGS = { stolperstein: 'wl-tag-err', regel: 'wl-tag-rule', allgemein: 'wl-tag-all' };
-  const SOURCES = { auftrag: 'nach einem Auftrag', daumen: 'nach deinem 👎', fehler: 'nach einem Fehler' };
+  const TAGS = { stolperstein: 'wl-tag-err', regel: 'wl-tag-rule', allgemein: 'wl-tag-all', skill: 'wl-tag-skill', app: 'wl-tag-app' };
+  const SOURCES = { auftrag: 'nach einem Auftrag', daumen: 'nach deinem 👎', fehler: 'nach einem Fehler', verbesserung: 'aus der Verbesserungs-Runde', timo: 'deine Idee' };
+  let pollTimer = null;
+  const when = (iso) => { try { return new Date(iso).toLocaleString('de-DE', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
+  function button(text, className, onClick) {
+    const node = el('button', className, text);
+    node.type = 'button';
+    node.addEventListener('click', onClick);
+    return node;
+  }
+
+  // ---------- Testkopie (Paket 5): Worky baut App-Verbesserungen getrennt, Timo probiert aus und entscheidet ----------
+  const COPY_TITLES = {
+    baut: '🔧 Worky baut in der Testkopie',
+    pruefen: '🔍 Der Prüfer schaut sich die Änderung an',
+    fertig: '🧪 Fertig zum Ausprobieren',
+    gesperrt: '⛔ Gestoppt',
+    fehler: '⚠️ Das hat nicht geklappt',
+    pr: '✅ Als Pull Request auf GitHub'
+  };
+  function renderCopy(box, copy) {
+    clearTimeout(pollTimer);
+    box.replaceChildren();
+    box.hidden = !copy || copy.status === 'leer';
+    if (box.hidden) return;
+    box.dataset.state = copy.status;
+    box.append(el('span', 'wl-copy-kicker', 'Testkopie von Workflow'), el('h3', '', COPY_TITLES[copy.status] || copy.status), el('p', 'wl-copy-title', `„${copy.titel}“`));
+    const say = el('p', 'wl-saved');
+    const act = (path, confirmText) => async (event) => {
+      if (confirmText && !confirm(confirmText)) return;
+      const knob = event.currentTarget;
+      knob.disabled = true;
+      say.textContent = 'Einen Moment …';
+      try {
+        const next = await api(`/api/testkopie/${path}`, {});
+        if (path === 'starten') window.open(next.url, '_blank', 'noopener');
+        if (path === 'aktualisieren') {
+          say.textContent = next.changed ? 'Neuer Stand geholt. Workflow startet neu, die Seite lädt gleich neu …' : 'Workflow ist schon auf dem neuesten Stand.';
+          if (next.changed) setTimeout(() => location.reload(), 5000);
+          knob.disabled = false;
+          return;
+        }
+        if (path === 'verwerfen' || path === 'uebernehmen') { void showPage(); return; }
+        renderCopy(box, next);
+      } catch (error) { say.textContent = error.message; knob.disabled = false; }
+    };
+    if (copy.status === 'baut' || copy.status === 'pruefen') {
+      box.append(el('div', 'wl-copy-run'), el('p', '', `Gestartet ${when(copy.startedAt)}. Das dauert meist 5 bis 30 Minuten. Du kannst solange weiterarbeiten.`));
+      pollTimer = setTimeout(async () => {
+        if (!box.isConnected) return;
+        try { renderCopy(box, await api('/api/testkopie')); } catch { renderCopy(box, copy); }
+      }, 5000);
+      return;
+    }
+    if (copy.status === 'fertig') {
+      if (copy.summary) box.append(el('p', 'wl-copy-summary', copy.summary));
+      if (copy.files?.length) box.append(el('p', 'wl-reason', `Geändert: ${copy.files.join(', ')}`));
+      if (copy.review) box.append(el('p', copy.reviewWarn ? 'wl-copy-warn' : 'wl-reason', `Prüfer: ${copy.review}`));
+      const actions = el('div', 'wl-actions');
+      actions.append(
+        button(copy.server ? 'Testkopie öffnen' : 'Testkopie starten', 'wl-take', act('starten')),
+        button('Übernehmen', 'wl-skip', act('uebernehmen', 'Übernehmen lädt die Änderung als Pull Request zu GitHub hoch. Mergen machst du danach selbst. Weiter?')),
+        button('Verwerfen', 'wl-skip', act('verwerfen', 'Testkopie mit allen Änderungen löschen?'))
+      );
+      box.append(el('p', 'wl-reason', 'Die Testkopie läuft auf Port 4181 neben deinem echten Workflow und arbeitet in denselben Projekten. Probier die Änderung dort aus.'), actions, say);
+      return;
+    }
+    if (copy.status === 'pr') {
+      const line = el('p', '');
+      if (copy.prUrl) {
+        const link = el('a', '', 'Pull Request öffnen');
+        link.href = copy.prUrl;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        line.append(link, ' · Merge ihn auf GitHub, dann klick „Workflow aktualisieren“.');
+      } else line.textContent = `Der Zweig ${copy.branch} ist auf GitHub. Leg den Pull Request in GitHub Desktop an („Create Pull Request“), merge ihn, dann klick „Workflow aktualisieren“.`;
+      const actions = el('div', 'wl-actions');
+      actions.append(button('Workflow aktualisieren', 'wl-take', act('aktualisieren')));
+      box.append(line, actions, say);
+      return;
+    }
+    // gesperrt oder fehler
+    box.append(el('p', 'wl-copy-warn', copy.reason || 'Unbekannter Fehler.'));
+    const actions = el('div', 'wl-actions');
+    actions.append(button('Testkopie verwerfen', 'wl-take', act('verwerfen', 'Testkopie mit allen Änderungen löschen? Die Idee bleibt als Vorschlag stehen.')));
+    box.append(actions, say);
+  }
 
   function stat(label, value, hint) {
     const card = el('div', 'wl-stat');
@@ -120,12 +205,13 @@
   async function showPage() {
     if (!project) return;
     let data;
-    try { data = await api('/api/lernen'); } catch (error) { alert(error.message); return; }
+    let copy = null;
+    try { [data, copy] = await Promise.all([api('/api/lernen'), api('/api/testkopie').catch(() => null)]); } catch (error) { alert(error.message); return; }
     document.querySelector('.wl-page')?.remove();
     const layer = el('div', 'ws-layer ws-projects wl-page');
     layer.setAttribute('role', 'dialog');
     layer.setAttribute('aria-label', 'Worky lernt');
-    const close = () => { layer.classList.add('ws-leaving'); setTimeout(() => layer.remove(), 400); };
+    const close = () => { clearTimeout(pollTimer); layer.classList.add('ws-leaving'); setTimeout(() => layer.remove(), 400); };
 
     const head = el('header', 'ws-head');
     const back = el('button', 'wl-back', '← Zurück zu Worky');
@@ -148,24 +234,40 @@
     const columns = el('div', 'wl-columns');
     const left = el('section', 'wl-left');
     left.setAttribute('aria-label', 'Vorschläge');
-    left.append(el('h2', '', 'Worky schlägt vor'));
+    const copyBox = el('section', 'wl-copy');
+    copyBox.setAttribute('aria-live', 'polite');
+    renderCopy(copyBox, copy);
+    left.append(copyBox, el('h2', '', 'Worky schlägt vor'));
     if (!data.proposals.length) left.append(el('p', 'wl-empty', 'Gerade keine Vorschläge. Nach dem nächsten Auftrag oder einem 👎 denkt Worky wieder nach.'));
     for (const item of data.proposals) {
       const card = el('article', 'wl-card');
       const top = el('div', 'wl-card-top');
       top.append(el('span', `wl-tag ${TAGS[item.art] || ''}`, data.kinds[item.art] || item.art), el('span', 'wl-why', `${SOURCES[item.source] || ''}${item.projectName && item.projectName !== data.project.name ? ` · aus ${item.projectName}` : ''}`));
-      card.append(top, el('h3', '', item.titel), el('p', '', item.text));
+      card.append(top, el('h3', '', item.titel));
+      if (item.art === 'skill') {
+        card.append(el('p', '', item.beschreibung || ''));
+        const details = el('details', 'wl-skill');
+        details.append(el('summary', '', `Anleitung ansehen (.claude/skills/${item.name})`), el('pre', '', item.text));
+        card.append(details);
+      } else card.append(el('p', 'wl-text', item.text));
       if (item.warum) card.append(el('p', 'wl-reason', `Warum: ${item.warum}`));
       const actions = el('div', 'wl-actions');
-      const take = el('button', 'wl-take', 'Übernehmen');
+      const take = el('button', 'wl-take', item.art === 'app' ? 'In Testkopie bauen' : 'Übernehmen');
       const skip = el('button', 'wl-skip', 'Nein danke');
       take.type = skip.type = 'button';
       const decide = async (yes) => {
         take.disabled = skip.disabled = true;
         try {
+          if (yes && item.art === 'app') {
+            renderCopy(copyBox, await api('/api/testkopie/bauen', { id: item.id }));
+            void refreshBadge();
+            card.remove();
+            copyBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+          }
           const result = await api('/api/lernen/entscheiden', { id: item.id, take: yes });
           setBadge(result.open);
-          actions.replaceChildren(el('span', yes ? 'wl-done' : 'wl-done wl-no', yes ? 'Übernommen. Gilt ab dem nächsten Auftrag.' : 'Abgelehnt. Worky schlägt das nicht nochmal vor.'));
+          actions.replaceChildren(el('span', yes ? 'wl-done' : 'wl-done wl-no', !yes ? 'Abgelehnt. Worky schlägt das nicht nochmal vor.' : item.art === 'skill' ? `Übernommen. Die Fähigkeit liegt jetzt in .claude/skills/${item.name}.` : 'Übernommen. Gilt ab dem nächsten Auftrag.'));
         } catch (error) {
           take.disabled = skip.disabled = false;
           actions.append(el('span', 'wl-done wl-no', error.message));
@@ -193,7 +295,51 @@
     const saveSetting = async (key, value, box) => {
       try { await api('/api/lernen/einstellungen', { [key]: value }); say.textContent = 'Gespeichert.'; } catch (error) { box.checked = !value; say.textContent = error.message; }
     };
+    // Verbesserungs-Runde und eigene Ideen für Workflow
+    const improve = el('div', 'wl-improve');
+    const improveSay = el('p', 'wl-saved', data.lastImprove ? `Zuletzt nachgedacht: ${when(data.lastImprove)}` : 'Noch nie nachgedacht.');
+    const think = button(data.improving ? 'Worky denkt nach …' : 'Jetzt nachdenken', 'wl-take', async () => {
+      think.disabled = true;
+      think.textContent = 'Worky denkt nach …';
+      improveSay.textContent = 'Das dauert meist eine Minute.';
+      try {
+        const result = await api('/api/lernen/verbessern', {});
+        setBadge(result.open);
+        if (result.added) { void showPage(); return; }
+        improveSay.textContent = 'Worky hat gerade nichts gefunden, was er besser machen sollte.';
+      } catch (error) { improveSay.textContent = error.message; }
+      think.disabled = false;
+      think.textContent = 'Jetzt nachdenken';
+    });
+    think.disabled = Boolean(data.improving);
+    improve.append(el('h3', '', 'Worky verbessert sich selbst'), el('p', '', 'Worky schaut sich deine 👎 und abgebrochene Aufträge an und schlägt Regeln, neue Fähigkeiten oder Verbesserungen an Workflow vor. Workflow selbst ändert er nur in einer Testkopie.'), think, improveSay);
+    const idea = el('form', 'wl-idea');
+    const ideaText = el('textarea');
+    ideaText.rows = 3;
+    ideaText.maxLength = 1500;
+    ideaText.placeholder = 'Deine Idee für Workflow, z. B. „Zeig beim Projektwechsel, welches Projekt gerade offen ist.“';
+    ideaText.setAttribute('aria-label', 'Deine Idee für Workflow');
+    const ideaSend = el('button', 'wl-skip', 'In Testkopie bauen');
+    ideaSend.type = 'submit';
+    const ideaSay = el('p', 'wl-saved');
+    idea.append(el('strong', '', 'Eigene Idee für Workflow'), ideaText, ideaSend, ideaSay);
+    if (copy && !copy.available) { ideaSend.disabled = true; ideaSay.textContent = copy.why; }
+    idea.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (ideaText.value.trim().length < 8) { ideaText.focus(); return; }
+      ideaSend.disabled = true;
+      try {
+        renderCopy(copyBox, await api('/api/testkopie/bauen', { idee: ideaText.value }));
+        ideaText.value = '';
+        ideaSay.textContent = 'Worky baut, oben siehst du den Stand.';
+        copyBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } catch (error) { ideaSay.textContent = error.message; }
+      ideaSend.disabled = false;
+    });
     right.append(
+      improve,
+      idea,
+      toggle('Von selbst nachdenken', 'Nach 3 schlechten Läufen (👎 oder Abbruch) eine Verbesserungs-Runde, höchstens einmal am Tag.', data.settings.autoImprove !== false, (value, box) => void saveSetting('autoImprove', value, box)),
       toggle('In alle Projekte mitnehmen', 'Allgemeines Wissen (Luau, Blender, Git) hilft auch beim nächsten Spiel.', data.settings.shareGeneral, (value, box) => void saveSetting('shareGeneral', value, box)),
       toggle('Lern-Runde nach Aufträgen', 'Nach jedem Gründlich-Auftrag, der Dateien ändert, eine kurze Claude-Anfrage. Ein 👎 startet sie immer.', data.settings.autoRound, (value, box) => void saveSetting('autoRound', value, box)),
       say
