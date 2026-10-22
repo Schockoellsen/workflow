@@ -26,3 +26,23 @@
 .project-hint{display:block;margin-top:4px;color:var(--ls-muted,#6a7189);font-size:12px}
 /* Studio/Rojo bei Nicht-Roblox-Projekten ausblenden (die Knöpfe haben sonst display:inline-flex) */
 [data-nur-roblox][hidden]{display:none !important}
+[data-nur-web][hidden]{display:none !important}
+#open-game{text-decoration:none;--icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23000'%3E%3Cpath d='M7 4.5v15l13-7.5z'/%3E%3C/svg%3E")}
+/* Neues Projekt (Paket 3) */
+.np-open{margin:0 0 4px}
+.np-kinds{border:0;padding:0;margin:14px 0 0}
+.np-kinds legend{font-size:13px;padding:0;margin-bottom:8px}
+.np-kind-list{display:flex;flex-wrap:wrap;gap:8px}
+.np-kind{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 14px;border:1px solid var(--ls-line-2,#dcdfea);border-radius:999px;background:var(--ls-well,#fff);color:var(--ls-text,#1d2236);font-size:14px;cursor:pointer}
+.np-kind input{position:absolute;opacity:0;pointer-events:none}
+.np-kind:has(input:checked){border:2px solid var(--ls-accent,#5b5fd6);background:var(--ls-accent-soft,#eef0ff);color:var(--ls-accent-hi,#4a4ec4);font-weight:600;padding:0 13px}
+.np-kind:has(input:focus-visible){outline:2px solid var(--ls-accent,#5b5fd6);outline-offset:2px}
+.np-kind-note{margin:8px 0 0;font-size:13px;line-height:1.5;color:var(--ls-text-2,#4b5269)}
+.new-project-dialog textarea{width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1px solid var(--ls-line-2,#dcdfea);background:var(--ls-well,#fff);color:var(--ls-text,#1d2236);font:inherit;resize:vertical}
+.new-project-dialog>form>input{width:100%;box-sizing:border-box;min-height:42px;padding:9px 12px;border-radius:10px;border:1px solid var(--ls-line-2,#dcdfea);background:var(--ls-well,#fff);color:var(--ls-text,#1d2236);font:inherit}
+.new-project-dialog label{display:block;margin:14px 0 6px;font-size:13px}
+.new-project-dialog label.np-kind{display:inline-flex;margin:0}
+.np-folder{margin-top:14px;font-size:13px}
+.np-folder summary{cursor:pointer;color:var(--ls-text-2,#4b5269);overflow-wrap:anywhere}
+.np-folder summary span{font-family:var(--ls-mono,monospace);font-size:12px}
+.np-folder input{width:100%;box-sizing:border-box;min-height:42px;padding:9px 12px;border-radius:10px;border:1px solid var(--ls-line-2,#dcdfea);background:var(--ls-well,#fff);color:var(--ls-text,#1d2236);font:inherit}

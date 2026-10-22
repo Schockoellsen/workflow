@@ -3,11 +3,12 @@ import { spawn } from 'node:child_process';
 import { createConnection } from 'node:net';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { appendFile, lstat, mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { appendFile, copyFile, lstat, mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createProjectFiles } from './vorlagen.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 // ===== Projekte: Workflow arbeitet immer im gerade gewählten Projekt =====
@@ -1741,6 +1742,88 @@ if (!projectStore || !projectStore.projects.length) {
   if (start) applyProject(start);
 }
 
+// Wo neue Projekte hinkommen: neben den workflow-Ordner (dort legt GitHub Desktop alle Repos ab),
+// sonst Dokumente/GitHub oder Dokumente
+function defaultProjectParent() {
+  const candidates = [path.resolve(HERE, '..', '..')];
+  for (const documents of ['Documents', 'Dokumente', path.join('OneDrive', 'Documents'), path.join('OneDrive', 'Dokumente')]) {
+    candidates.push(path.join(homedir(), documents, 'GitHub'));
+  }
+  for (const documents of ['Documents', 'Dokumente']) candidates.push(path.join(homedir(), documents));
+  return candidates.find((folder) => folderExists(folder) && path.parse(folder).root !== folder && !insideProject(folder)) || homedir();
+}
+
+// Liegt der Ordner in einem Projekt (oder einem anderen Git-Repo)? Dann gehört dort kein neues Projekt hinein.
+function insideProject(folder) {
+  const resolved = path.resolve(folder);
+  if (projectStore.projects.some((item) => { const root = path.resolve(item.root); return resolved === root || resolved.startsWith(root + path.sep); })) return true;
+  for (let current = resolved; ; current = path.dirname(current)) {
+    if (existsSync(path.join(current, '.git'))) return true;
+    if (path.dirname(current) === current) return false;
+  }
+}
+
+// Git in einem bestimmten Ordner (runGit arbeitet immer im offenen Projekt)
+function gitIn(folder, args) {
+  return new Promise((resolve) => {
+    let output = '';
+    let child;
+    try {
+      child = spawn(GIT_COMMAND, args, { cwd: folder, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    } catch (error) {
+      return resolve({ ok: false, output: error.message });
+    }
+    const timer = setTimeout(() => child.kill(), 20_000);
+    child.stdout.on('data', (chunk) => { output = (output + chunk).slice(-2000); });
+    child.stderr.on('data', (chunk) => { output = (output + chunk).slice(-2000); });
+    child.once('error', (error) => { clearTimeout(timer); resolve({ ok: false, output: error.message }); });
+    child.once('close', (code) => { clearTimeout(timer); resolve({ ok: code === 0, output }); });
+  });
+}
+
+// Neues Projekt aus einer Vorlage: Ordner anlegen, Dateien schreiben, Git starten, in die Liste aufnehmen
+async function createProject(data) {
+  const name = typeof data.name === 'string' ? data.name.trim().replace(/\s+/g, ' ').slice(0, 60) : '';
+  if (!name) throw Object.assign(new Error('Bitte gib dem Projekt einen Namen.'), { status: 400 });
+  const kind = PROJECT_KINDS[data.kind] ? data.kind : 'andere';
+  const description = typeof data.description === 'string' ? data.description.trim().slice(0, 200) : '';
+  let parent;
+  try { parent = checkProjectFolder(data.parent || defaultProjectParent()); } catch (error) { throw Object.assign(error, { status: 400 }); }
+  if (insideProject(parent)) throw Object.assign(new Error('Dieser Ordner gehört schon zu einem Projekt (oder Git-Repo). Nimm einen Ordner daneben, z. B. Dokumente\\GitHub.'), { status: 400 });
+  const slug = projectSlug(name, new Set());
+  const folder = path.join(parent, slug);
+  if (existsSync(folder)) throw Object.assign(new Error(`Den Ordner „${slug}“ gibt es dort schon. Nimm einen anderen Namen oder füg den Ordner über „Ordner öffnen“ hinzu.`), { status: 409 });
+  await mkdir(folder);
+  const files = await createProjectFiles({ folder, slug, name, kind, kindLabel: PROJECT_KINDS[kind], description });
+
+  // Roblox: rojo.exe aus einem anderen Roblox-Projekt mitnehmen, damit der Rojo-Knopf gleich geht (ist git-ignoriert)
+  let rojo = 'nicht-noetig';
+  if (kind === 'roblox') {
+    rojo = 'fehlt';
+    for (const other of projectStore.projects) {
+      const source = path.join(other.root, 'rojo.exe');
+      if (other.kind !== 'roblox' || !existsSync(source)) continue;
+      try { await copyFile(source, path.join(folder, 'rojo.exe')); rojo = 'kopiert'; break; } catch { /* nächstes Projekt probieren */ }
+    }
+  }
+
+  // Git: Repo anlegen und ersten Commit machen. Klappt das nicht (Git fehlt, kein Name eingerichtet), geht es ohne weiter.
+  let git = 'ok';
+  const init = await gitIn(folder, ['init', '-b', 'main']);
+  if (!init.ok) git = 'kein-git';
+  else {
+    await gitIn(folder, ['add', '-A']);
+    const commit = await gitIn(folder, ['commit', '-m', `Neues Projekt „${name}“ aus der Workflow-Vorlage`]);
+    if (!commit.ok) git = 'ohne-commit';
+  }
+
+  const project = { id: projectSlug(name, new Set(projectStore.projects.map((item) => item.id))), name, kind, root: folder, description, addedAt: new Date().toISOString() };
+  projectStore.projects.push(project);
+  writeProjects(projectStore);
+  console.log(`Neues Projekt angelegt: ${name} (${folder}), Git: ${git}`);
+  return { project, files: files.length, git, rojo };
+}
+
 // Ordner prüfen, bevor er ein Projekt wird: muss es geben, kein Laufwerk (C:\) und nicht Workflow selbst
 function checkProjectFolder(value) {
   if (typeof value !== 'string' || !value.trim() || value.length > 400) throw new Error('Bitte gib den Ordner des Projekts an.');
@@ -1755,7 +1838,7 @@ function checkProjectFolder(value) {
 }
 
 async function handleProjects(request, response, pathname) {
-  const listing = () => ({ active: PROJECT?.id || null, busy: activeRuns > 0, kinds: PROJECT_KINDS, projects: projectStore.projects.map(publicProject) });
+  const listing = () => ({ active: PROJECT?.id || null, busy: activeRuns > 0, kinds: PROJECT_KINDS, defaultParent: defaultProjectParent(), projects: projectStore.projects.map(publicProject) });
   if (request.method === 'GET' && pathname === '/api/projekte') return sendJson(response, 200, listing());
   if (request.method !== 'POST') return sendJson(response, 405, { error: 'Diese Anfrage ist nicht erlaubt.' });
   let data;
@@ -1794,6 +1877,15 @@ async function handleProjects(request, response, pathname) {
     return sendJson(response, 200, { ...listing(), added: project.id });
   }
 
+  if (pathname === '/api/projekte/anlegen') {
+    try {
+      const result = await createProject(data);
+      return sendJson(response, 200, { ...listing(), added: result.project.id, folder: result.project.root, files: result.files, git: result.git, rojo: result.rojo });
+    } catch (error) {
+      return sendJson(response, error.status || 500, { error: error.message || 'Das Projekt konnte nicht angelegt werden.' });
+    }
+  }
+
   if (pathname === '/api/projekte/entfernen') {
     const project = projectStore.projects.find((item) => item.id === data.id);
     if (!project) return sendJson(response, 404, { error: 'Dieses Projekt gibt es nicht in der Liste.' });
@@ -1825,8 +1917,42 @@ async function serveMockup(request, response, pathname) {
   }
 }
 
+// Vorschau für Browser-Spiele (/spiel/…): Dateien aus dem Projektordner, abgeschottet in einer Sandbox ohne
+// Zugriff auf Workflow (eigener „Ursprung“), damit Spielcode keine Workflow-Anfragen schicken kann
+const GAME_TYPES = new Map([...mimeTypes, ['.json', 'application/json; charset=utf-8'], ['.jpg', 'image/jpeg'], ['.jpeg', 'image/jpeg'],
+  ['.gif', 'image/gif'], ['.webp', 'image/webp'], ['.mp3', 'audio/mpeg'], ['.ogg', 'audio/ogg'], ['.wav', 'audio/wav'],
+  ['.woff2', 'font/woff2'], ['.mjs', 'text/javascript; charset=utf-8'], ['.txt', 'text/plain; charset=utf-8']]);
+async function serveGame(request, response, pathname) {
+  if (!PROJECT || PROJECT.kind !== 'web') return sendJson(response, 404, { error: 'Die Vorschau gibt es nur für Browser-Spiele.' });
+  let relative;
+  try { relative = decodeURIComponent(pathname.slice('/spiel/'.length)) || 'index.html'; } catch { return sendJson(response, 400, { error: 'Ungültiger Pfad.' }); }
+  if (relative.endsWith('/')) relative += 'index.html';
+  const parts = relative.split('/');
+  if (parts.some((part) => !part || part === '..' || part.startsWith('.')) || relative.includes('\\')) return sendJson(response, 404, { error: 'Diese Datei gibt es nicht.' });
+  const type = GAME_TYPES.get(path.extname(relative).toLowerCase());
+  if (!type) return sendJson(response, 404, { error: 'Diese Dateiart zeigt die Vorschau nicht.' });
+  const file = path.join(PROJECT_ROOT, ...parts);
+  if (!file.startsWith(PROJECT_ROOT + path.sep)) return sendJson(response, 404, { error: 'Diese Datei gibt es nicht.' });
+  try {
+    const info = await lstat(file);
+    if (!info.isFile()) throw new Error('kein Datei');
+    response.writeHead(200, {
+      'Content-Type': type,
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': "sandbox allow-scripts allow-pointer-lock; default-src 'self' 'unsafe-inline' data: blob:",
+      'Access-Control-Allow-Origin': '*'
+    });
+    return response.end(await readFile(file));
+  } catch {
+    return sendJson(response, 404, { error: 'Diese Datei gibt es nicht.' });
+  }
+}
+
 const server = createServer(async (request, response) => {
-  if (!requestIsLocal(request)) return sendJson(response, 403, { error: 'Nur die lokale Workflow-App darf diesen Dienst verwenden.' });
+  // Das Browser-Spiel in der Vorschau (Sandbox, Ursprung „null“) darf nur seine eigenen Dateien unter /spiel/ laden
+  const gameAsset = request.method === 'GET' && request.headers.origin === 'null' && request.headers.host === `${HOST}:${PORT}` && request.url.startsWith('/spiel/');
+  if (!gameAsset && !requestIsLocal(request)) return sendJson(response, 403, { error: 'Nur die lokale Workflow-App darf diesen Dienst verwenden.' });
   const requestUrl = new URL(request.url, `http://${HOST}:${PORT}`);
   const pathname = requestUrl.pathname;
 
@@ -1836,6 +1962,10 @@ const server = createServer(async (request, response) => {
     return sendJson(response, 409, { error: 'Wähle zuerst oben ein Projekt aus (oder füge eins hinzu).' });
   }
   if (request.method === 'GET' && pathname.startsWith('/entwuerfe/')) return serveMockup(request, response, pathname);
+  if (request.method === 'GET' && (pathname === '/spiel' || pathname.startsWith('/spiel/'))) {
+    if (pathname === '/spiel') { response.writeHead(302, { Location: '/spiel/' }); return response.end(); }
+    return serveGame(request, response, pathname);
+  }
 
   if (request.method === 'GET' && pathname === '/api/status') {
     return sendJson(response, 200, { ...await checkClaudeAuth(), ...await serverBuildInfo() });

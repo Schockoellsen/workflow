@@ -76,6 +76,9 @@ html[data-theme="dark"] .ws-new{background:transparent;border-color:#3b4258;colo
 .ws-new strong{font-size:18px;color:inherit}
 .ws-new span{font-size:14px;max-width:240px;line-height:1.5}
 .ws-plus{width:56px;height:56px;border-radius:18px;background:#5b5fd6;color:#fff;display:grid;place-items:center}
+.ws-open{min-height:200px}
+.ws-plus-soft{background:#eef0ff;color:#5b5fd6}
+html[data-theme="dark"] .ws-plus-soft{background:#23264a;color:#c4c6ff}
 .ws-empty{color:#6a7189;font-size:15px}
 @keyframes ws-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 @media (max-width:640px){.ws-head{padding:14px 16px}.ws-main{padding:32px 16px 48px}.ws-hello h1{font-size:30px}}

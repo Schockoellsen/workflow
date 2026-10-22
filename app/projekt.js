@@ -22,6 +22,7 @@
     if (project) document.documentElement.dataset.projektArt = project.kind;
     // Studio und Rojo gibt es nur bei Roblox-Projekten
     for (const element of document.querySelectorAll('[data-nur-roblox]')) element.hidden = project?.kind !== 'roblox';
+    for (const element of document.querySelectorAll('[data-nur-web]')) element.hidden = project?.kind !== 'web';
 
     const dialog = document.querySelector('#project-dialog');
     const list = document.querySelector('#project-list');
@@ -93,6 +94,7 @@
     }
 
     document.querySelector('#project-switch')?.addEventListener('click', openDialog);
+    document.querySelector('[data-neues-projekt]')?.addEventListener('click', () => { dialog.close(); window.workflowNewProject?.(); });
     document.querySelector('#project-add-button')?.addEventListener('click', async () => {
       const body = {
         name: document.querySelector('#project-name').value,

@@ -170,14 +170,23 @@
       grid.append(card);
     });
 
+    const plusIcon = () => svg('<path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>', '0 0 24 24', 26, 26);
+    const folderIcon = () => svg('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>', '0 0 24 24', 24, 24);
     const add = el('button', 'ws-card ws-new');
     add.type = 'button';
     add.style.animationDelay = `${cards.length * 0.06}s`;
     const plus = el('span', 'ws-plus');
-    plus.append(svg('<path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>', '0 0 24 24', 26, 26));
-    add.append(plus, el('strong', '', 'Projekt hinzufügen'), el('span', '', 'Ein Spiel, das schon auf deinem PC liegt, zu Workflow holen. Roblox, Browser, Godot oder Unity.'));
-    add.addEventListener('click', () => window.workflowOpenProjects?.(true));
-    grid.append(add);
+    plus.append(plusIcon());
+    add.append(plus, el('strong', '', 'Neues Projekt'), el('span', '', 'Name, Spielart und eine kurze Beschreibung. Workflow legt Ordner, Startdateien, Regeln und Tresor an.'));
+    add.addEventListener('click', () => window.workflowNewProject?.());
+    const open = el('button', 'ws-card ws-new ws-open');
+    open.type = 'button';
+    open.style.animationDelay = `${(cards.length + 1) * 0.06}s`;
+    const folder = el('span', 'ws-plus ws-plus-soft');
+    folder.append(folderIcon());
+    open.append(folder, el('strong', '', 'Ordner öffnen'), el('span', '', 'Ein Spiel, das schon auf deinem PC liegt, zu Workflow holen.'));
+    open.addEventListener('click', () => window.workflowOpenProjects?.(true));
+    grid.append(add, open);
 
     input.addEventListener('input', () => {
       const query = input.value.trim().toLocaleLowerCase('de');
