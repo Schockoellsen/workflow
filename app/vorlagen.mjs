@@ -40,7 +40,8 @@ const KIND_RULES = {
     '- Der Server rechnet, der Client zeigt nur an. Client → Server schickt nur Wünsche, nie Preise oder Mengen; der Server prüft alles.',
     '- Spielwerte stehen in `src/shared/Config/`. Jedes ModuleScript endet mit `return`.',
     '- Jede Datei beginnt mit `-- Name (Typ) | Pfad in Studio`.',
-    '- Vor jedem Commit alle `.luau`-Dateien mit `luau-compile` auf Syntax prüfen, wenn es installiert ist.'
+    '- Vor jedem Commit alle `.luau`-Dateien mit `luau-compile` auf Syntax prüfen, wenn es installiert ist.',
+    '- Reine Rechen-Logik (Preise, Produktion) bekommt Tests in `tests/<thema>.test.luau`, die mit Lune laufen (wenn Lune in Workflow installiert ist).'
   ],
   web: [
     '',
@@ -48,13 +49,15 @@ const KIND_RULES = {
     '',
     '- Einfaches HTML, CSS und JavaScript ohne Pakete und ohne Build: `index.html`, `style.css`, `spiel.js`.',
     '- Läuft am PC und auf dem Handy (Tasten und Touch). Workflow zeigt das Spiel über den Knopf „Spiel ansehen“.',
-    '- Vor jedem Commit `node --check spiel.js` (und jede weitere .js-Datei).'
+    '- Vor jedem Commit `node --check spiel.js` (und jede weitere .js-Datei).',
+    '- Nach Änderungen testet Worky das Spiel selbst ohne Fenster (Werkzeug spiel_testen: Bild und Konsole) und behebt rote Fehler.'
   ],
   godot: [
     '',
     '## Godot',
     '',
-    '- GDScript, Szenen in `scenes/`, Skripte in `scripts/`. Worky kann Godot noch nicht selbst starten: der Entwickler testet im Godot-Editor.'
+    '- GDScript, Szenen in `scenes/`, Skripte in `scripts/`.',
+    '- Ist Godot in Workflow eingerichtet (Werkzeuge), startet Worky das Spiel nach Änderungen selbst ohne Fenster (Werkzeug godot_testen) und behebt gemeldete Fehler. Sonst testet der Entwickler im Godot-Editor.'
   ],
   unity: [
     '',

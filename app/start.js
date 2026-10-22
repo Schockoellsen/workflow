@@ -166,7 +166,7 @@
           location.reload();
         } catch (error) { alert(error.message); }
       });
-      cards.push({ card, text: `${item.name} ${item.kindLabel} ${item.description || ''}`.toLocaleLowerCase('de') });
+      cards.push({ card, chips, body, item, text: `${item.name} ${item.kindLabel} ${item.description || ''}`.toLocaleLowerCase('de') });
       grid.append(card);
     });
 
@@ -188,12 +188,59 @@
     open.addEventListener('click', () => window.workflowOpenProjects?.(true));
     grid.append(add, open);
 
+    void showStatus(cards, main);
+
     input.addEventListener('input', () => {
       const query = input.value.trim().toLocaleLowerCase('de');
       for (const { card, text } of cards) card.hidden = Boolean(query) && !text.includes(query);
     });
     (grid.querySelector('.ws-card:not(:disabled)') || add).focus({ preventScroll: true });
   }
+
+  // Projekt-Status (Ausbau 2026-10-22): ungespeicherte Änderungen, Zweig und offene Pull Requests je Karte,
+  // darunter eine Liste „Wartet auf dein Merge“ mit Links zu GitHub
+  async function showStatus(cards, main) {
+    let data;
+    try { data = await getJson('/api/projekte/status', 45_000); } catch { return; }
+    const waiting = [];
+    for (const { card, chips, body, item } of cards) {
+      const status = data.status?.[item.id];
+      if (!status?.git) continue;
+      const add = (text, className = '', title = '') => {
+        const chip = el('span', `ws-chip ${className}`, text);
+        if (title) chip.title = title;
+        chips.append(chip);
+      };
+      if (status.changes) add(`${status.changes} ${status.changes === 1 ? 'Änderung' : 'Änderungen'} nicht committet`, 'ws-warn', 'Im Projektordner gibt es Änderungen, die noch nicht gespeichert (committet) sind.');
+      if (status.branch && status.branch !== 'main' && status.branch !== 'master') add(`Zweig ${status.branch}`, '', 'Der Projektordner ist gerade auf diesem Zweig.');
+      if (status.ahead) add(`${status.ahead} nicht hochgeladen`, 'ws-warn', 'Commits, die noch nicht auf GitHub sind (Push fehlt).');
+      if (status.behind) add(`${status.behind} neu auf GitHub`, '', 'Auf GitHub gibt es neuere Commits (in GitHub Desktop „Pull origin“).');
+      if (status.prs?.length) {
+        add(`${status.prs.length} ${status.prs.length === 1 ? 'Pull Request wartet' : 'Pull Requests warten'}`, 'ws-mint', status.prs.map((pr) => `#${pr.number} ${pr.title}`).join('\n'));
+        for (const pr of status.prs) waiting.push({ project: item.name, ...pr });
+      }
+      if (!status.changes && !status.ahead && !status.prs?.length) add('Alles gespeichert', 'ws-quiet');
+      if (chips.childElementCount && !chips.isConnected) body.append(chips);
+      card.setAttribute('aria-description', [...chips.children].map((chip) => chip.textContent).join(', '));
+    }
+    if (!waiting.length || main.querySelector('.ws-waiting')) return;
+    const box = el('section', 'ws-waiting');
+    box.append(el('h2', '', 'Wartet auf dein Merge'));
+    const list = el('ul');
+    for (const pr of waiting) {
+      const line = el('li');
+      const link = el('a', '', `#${pr.number} ${pr.title}`);
+      link.href = pr.url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      line.append(link, el('span', '', ` · ${pr.project}${pr.draft ? ' · Entwurf' : ''}`));
+      list.append(line);
+    }
+    box.append(list, el('p', '', 'Auf GitHub ansehen, testen und mergen. Danach in GitHub Desktop „Pull origin“.'));
+    main.append(box);
+  }
+
+  window.workflowShowProjects = () => showProjects();
 
   // „Alle Projekte“ oben in der Seitenleiste führt zurück zur Projektseite
   for (const element of document.querySelectorAll('[data-alle-projekte]')) element.addEventListener('click', (event) => { event.preventDefault(); void showProjects(); });

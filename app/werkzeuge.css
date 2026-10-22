@@ -1,0 +1,68 @@
+/* Ausbau 2026-10-22: Werkzeuge-Seite (Worky prüft sich selbst, Sicherung, eigene Vorlagen, Tastenkürzel),
+   Projekt-Status auf den Karten, Update-Streifen, Vorher/Nachher-Bilder nebeneinander. Farben aus hell.css/nacht.css. */
+.wz-panel{display:grid;gap:12px;margin:0 14px 14px}
+.wz-card{display:grid;gap:8px;padding:14px;border:1px solid var(--ls-line-2);border-radius:14px;background:var(--ls-panel)}
+.wz-card h3{margin:0;font-size:15px;font-weight:700;color:var(--ls-text)}
+.wz-hint{margin:0;font-size:12.5px;line-height:1.5;color:var(--ls-muted)}
+.wz-hint:empty{display:none}
+.wz-rows{display:grid;gap:8px}
+.wz-row{display:grid;gap:8px;padding:10px 12px;border-radius:12px;background:var(--ls-panel-2);border:1px solid var(--ls-line)}
+.wz-row-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:8px}
+.wz-row-head > div:first-child{display:grid;gap:3px;flex:1 1 220px;min-width:0}
+.wz-row strong{font-size:13.5px;color:var(--ls-text)}
+.wz-row small{font-size:12px;line-height:1.5;color:var(--ls-text-2);overflow-wrap:anywhere}
+.wz-actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.wz-actions .primary-button,.wz-actions .outline-button{min-height:34px;padding:0 12px;border-radius:10px;font-size:13px}
+.wz-pill{padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
+.wz-pill.ok{background:var(--ls-mint-soft);color:var(--ls-mint)}
+.wz-out{display:grid;gap:8px}
+.wz-out[hidden]{display:none}
+.wz-ok{color:var(--ls-ok);font-size:13px}
+.wz-bad{color:var(--ls-err);font-size:13px}
+p.wz-ok,p.wz-bad{margin:0}
+.wz-legal{font-size:11px;color:var(--ls-muted)}
+.wz-results{display:grid;gap:6px}
+.wz-results p{margin:0;font-size:12.5px;color:var(--ls-text-2)}
+.wz-test summary{cursor:pointer;font-size:12.5px;color:var(--ls-text)}
+.wz-out pre,.wz-test pre{margin:6px 0 0;max-height:240px;overflow:auto;padding:8px 10px;border-radius:8px;background:var(--ls-well);border:1px solid var(--ls-line);font-size:11.5px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ls-text-2)}
+.wz-shot{width:100%;max-width:640px;border-radius:10px;border:1px solid var(--ls-line-2);display:block}
+.wz-console{margin:0;padding-left:18px;display:grid;gap:3px;font-size:12px;color:var(--ls-text-2);overflow-wrap:anywhere}
+.wz-console li.bad{color:var(--ls-err)}
+.wz-inline{display:flex;flex-wrap:wrap;gap:6px}
+.wz-inline input{flex:1 1 200px;min-width:0;min-height:34px;padding:0 10px;border-radius:10px;border:1px solid var(--ls-line-2);background:var(--ls-well);color:var(--ls-text);font:inherit;font-size:13px}
+.wz-inline .outline-button{min-height:34px;padding:0 12px;border-radius:10px;font-size:13px}
+.wz-line{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12.5px;color:var(--ls-text-2)}
+.wz-line > span{flex:1 1 200px;min-width:0}
+.wz-line a.tiny-action{text-decoration:none}
+.wz-keys{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:0;font-size:13px}
+.wz-keys dt{font-weight:700;color:var(--ls-text);white-space:nowrap}
+.wz-keys dd{margin:0;color:var(--ls-text-2)}
+.wz-keys-dialog .wz-keys{margin-top:14px}
+
+/* Projekt-Status auf der Projektseite und im Projekt-Dialog */
+.ws-chip.ws-warn{background:#fff4e0;color:#8a5a12}
+.ws-chip.ws-quiet{background:var(--ls-panel-2);color:var(--ls-muted)}
+html[data-theme="dark"] .ws-chip.ws-warn{background:#3a2c12;color:#f2c879}
+html[data-theme="dark"] .ws-chip.ws-quiet{background:#1b1f2b;color:#8b91a8}
+.ws-waiting{display:grid;gap:10px;padding:18px 20px;border-radius:18px;background:var(--ls-panel);border:1px solid var(--ls-line)}
+.ws-waiting h2{margin:0;font-size:18px}
+.ws-waiting ul{margin:0;padding-left:18px;display:grid;gap:6px;font-size:14px}
+.ws-waiting a{color:var(--ls-accent-hi);font-weight:600}
+.ws-waiting li span,.ws-waiting p{color:var(--ls-muted);font-size:13px}
+.ws-waiting p{margin:0}
+.project-state:empty{display:none}
+.project-state[data-state="offen"]{color:var(--ls-warn)}
+
+/* Update-Streifen oben */
+.wf-update{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:60;display:flex;flex-wrap:wrap;align-items:center;gap:10px;max-width:min(720px,calc(100% - 32px));padding:10px 12px 10px 16px;border-radius:14px;background:var(--ls-panel);border:1px solid var(--ls-accent);box-shadow:var(--ls-shadow);font-size:13.5px;color:var(--ls-text)}
+.wf-update-text{flex:1 1 260px}
+.wf-update-go{min-height:34px;padding:0 14px;border:0;border-radius:10px;background:var(--ls-accent);color:var(--ls-accent-ink);font:600 13px var(--ls-font,inherit);cursor:pointer}
+.wf-update-go:disabled{opacity:.7;cursor:default}
+.wf-update-later{min-height:34px;padding:0 10px;border:1px solid var(--ls-line-2);border-radius:10px;background:transparent;color:var(--ls-text-2);font:500 13px var(--ls-font,inherit);cursor:pointer}
+
+/* Tages-Runde auf „Worky lernt“ */
+.wl-daily{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+
+/* Vorher/Nachher: zwei Bilder nebeneinander, solange Platz ist */
+.worky-gallery > a{flex:1 1 260px;max-width:420px}
+.worky-gallery > a img{width:100%;max-width:100%;height:auto;object-fit:contain}

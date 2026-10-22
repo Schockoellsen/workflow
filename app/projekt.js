@@ -57,7 +57,10 @@
         const folder = document.createElement('small');
         folder.className = 'project-folder';
         folder.textContent = item.root;
-        open.append(name, info, folder);
+        const state = document.createElement('small');
+        state.className = 'project-state';
+        state.dataset.statusFor = item.id;
+        open.append(name, info, folder, state);
         open.addEventListener('click', async () => {
           if (item.id === data.active) { dialog.close(); return; }
           try {
@@ -87,10 +90,28 @@
       }
     }
 
+    // Projekt-Status (Ausbau 2026-10-22): kurz unter jedem Projekt, was offen ist
+    async function showStatus() {
+      let data;
+      try { data = await api('/api/projekte/status'); } catch { return; }
+      for (const [id, status] of Object.entries(data.status || {})) {
+        const target = list.querySelector(`[data-status-for="${CSS.escape(id)}"]`);
+        if (!target || !status?.git) continue;
+        const parts = [];
+        if (status.branch && !['main', 'master'].includes(status.branch)) parts.push(`Zweig ${status.branch}`);
+        if (status.changes) parts.push(`${status.changes} nicht committet`);
+        if (status.ahead) parts.push(`${status.ahead} nicht hochgeladen`);
+        if (status.prs?.length) parts.push(`${status.prs.length} PR wartet`);
+        target.textContent = parts.length ? parts.join(' · ') : 'alles gespeichert';
+        target.dataset.state = status.changes || status.ahead || status.prs?.length ? 'offen' : 'ok';
+      }
+    }
+
     async function openDialog() {
       say('');
       try { render(await api('/api/projekte')); } catch (error) { say(error.message, true); }
       if (!dialog.open) dialog.showModal();
+      void showStatus();
     }
 
     document.querySelector('#project-switch')?.addEventListener('click', openDialog);

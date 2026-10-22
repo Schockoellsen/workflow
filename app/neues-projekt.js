@@ -17,11 +17,13 @@
   const KINDS = [
     { id: 'roblox', label: 'Roblox', note: 'Rojo-Vorlage mit Server, Client und Spielwerten. Worky baut und testet selbst in Roblox Studio.' },
     { id: 'web', label: 'Browser-Spiel', note: 'Startspiel „Sammle die Sterne“ in HTML und JavaScript. Vorschau direkt aus Workflow, läuft auch am Handy.' },
-    { id: 'godot', label: 'Godot', note: 'Ordner, Regeln und Tresor. Worky schreibt GDScript, testen machst du im Godot-Editor.' },
+    { id: 'godot', label: 'Godot', note: 'Ordner, Regeln und Tresor. Worky schreibt GDScript. Ist Godot unter Werkzeuge eingerichtet, startet Worky dein Spiel selbst ohne Fenster und liest die Fehler.' },
     { id: 'unity', label: 'Unity', note: 'Ordner, Regeln und Tresor. Worky schreibt C#, testen machst du im Unity-Editor.' },
     { id: 'andere', label: 'Anderes', note: 'Nur Regeln und Tresor. Du sagst Worky, was es werden soll.' }
   ];
   let kind = 'roblox';
+  // Eigene Vorlage (Ausbau 2026-10-22): aus einem fertigen Projekt, Spielart kommt aus der Vorlage
+  let template = null;
 
   const say = (text, isError = false) => { message.textContent = text; message.dataset.state = isError ? 'error' : 'ok'; };
 
@@ -42,7 +44,7 @@
     radio.name = 'np-kind';
     radio.value = item.id;
     radio.checked = item.id === kind;
-    radio.addEventListener('change', () => { kind = item.id; kindNote.textContent = item.note; });
+    radio.addEventListener('change', () => { kind = item.id; template = null; kindNote.textContent = item.note; });
     label.append(radio, document.createTextNode(item.label));
     kindList.append(label);
   }
@@ -63,7 +65,7 @@
     createButton.disabled = true;
     say('Lege das Projekt an …');
     try {
-      const result = await post('/api/projekte/anlegen', { name: nameInput.value, kind, description: description.value, parent: parentInput.value });
+      const result = await post('/api/projekte/anlegen', { name: nameInput.value, kind, vorlage: template?.id || '', description: description.value, parent: parentInput.value });
       const notes = [];
       if (result.git === 'kein-git') notes.push('Git wurde nicht gefunden, das Projekt ist ohne Git angelegt.');
       if (result.git === 'ohne-commit') notes.push('Git ist angelegt, aber der erste Commit fehlt noch. Mach ihn in GitHub Desktop (dort ggf. Name und E-Mail einrichten).');
@@ -85,10 +87,36 @@
     }
   }, { once: false });
 
+  // Eigene Vorlagen als zusätzliche Auswahl hinter den Spielarten
+  async function loadOwnTemplates() {
+    for (const old of kindList.querySelectorAll('.np-own')) old.remove();
+    let list = [];
+    try { list = (await (await fetch('/api/projekte/vorlagen')).json()).vorlagen || []; } catch { return; }
+    for (const item of list) {
+      const label = document.createElement('label');
+      label.className = 'np-kind np-own';
+      label.title = `Aus dem Projekt „${item.fromProject}“, ${item.files} Dateien`;
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'np-kind';
+      radio.value = `vorlage:${item.id}`;
+      radio.addEventListener('change', () => {
+        kind = item.kind;
+        template = item;
+        kindNote.textContent = `Deine Vorlage „${item.name}“ (${item.kindLabel}, aus „${item.fromProject}“): ${item.files} Dateien mit Code, Regeln, Skills und Tresor-Wissen, ohne Chatverlauf. Namen und Werte vom alten Spiel passt Worky mit dir an.`;
+        if (!description.value && item.description) description.placeholder = item.description;
+      });
+      label.append(radio, document.createTextNode(`⭐ ${item.name}`));
+      kindList.append(label);
+    }
+  }
+
   window.workflowNewProject = async () => {
     say('');
     form.reset();
     kind = 'roblox';
+    template = null;
+    void loadOwnTemplates();
     kindList.querySelector('input[value="roblox"]').checked = true;
     kindNote.textContent = KINDS[0].note;
     try {
