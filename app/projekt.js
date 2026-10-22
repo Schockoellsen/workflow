@@ -104,8 +104,8 @@
         location.reload();
       } catch (error) { say(error.message, true); }
     });
-    // Ohne Projekt geht nichts: Auswahl gleich zeigen
-    if (!project) void openDialog();
+    // Für die Projektseite (start.js): Dialog öffnen, auf Wunsch gleich mit „Projekt hinzufügen“
+    window.workflowOpenProjects = async (add = false) => { await openDialog(); if (add) { addBox.open = true; document.querySelector('#project-name')?.focus(); } };
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
