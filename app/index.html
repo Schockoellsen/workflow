@@ -25,6 +25,7 @@
     <link rel="stylesheet" href="lernen.css" />
     <link rel="stylesheet" href="start.css" />
     <link rel="stylesheet" href="werkzeuge.css" />
+    <link rel="stylesheet" href="nachtschicht.css" />
     <script src="theme.js"></script>
   </head>
   <body>
@@ -39,6 +40,8 @@
           <button class="wf-nav" type="button" data-bereich-knopf="aenderungen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v12M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 9a9 9 0 0 1-9 9"/></svg><span>Änderungen</span></button>
           <button class="wf-nav" type="button" data-bereich-knopf="prompt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h6M14 12h6M12 4v6M12 14v6"/><circle cx="12" cy="12" r="2"/></svg><span>Prompt</span></button>
           <button class="wf-nav" type="button" data-bereich-knopf="team"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 20c.5-3 2.5-5 5-5s4.5 2 5 5M12 20c.5-3 2.5-5 5-5s4.5 2 5 5"/></svg><span>KI-Team</span></button>
+          <button class="wf-nav" type="button" data-bereich-knopf="nacht"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><span>Nacht-Schicht</span><b class="wf-count" id="night-count" hidden>0</b></button>
+          <button class="wf-nav" type="button" data-bereich-knopf="material"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/></svg><span>Material</span></button>
           <button class="wf-nav" type="button" data-bereich-knopf="werkzeuge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3 17.8V21h3.2l6.3-6.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg><span>Werkzeuge</span></button>
           <button class="wf-nav" type="button" data-bereich-knopf="tresor"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l8 5v10l-8 5-8-5V7z"/><path d="M12 22V12M20 7l-8 5-8-5"/></svg><span>Tresor</span></button>
           <button class="wf-nav wf-nav-learn" type="button" data-worky-lernt><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0-6 6c0 1.6.6 2.9 1.6 4 .8.9 1.4 1.9 1.4 3h6c0-1.1.6-2.1 1.4-3 1-1.1 1.6-2.4 1.6-4a6 6 0 0 0-6-6z"/><path d="M9.5 20h5M12 7v4M10 9h4"/></svg><span>Worky lernt</span><b class="wf-count wf-count-learn" id="learn-count" hidden>0</b></button>
@@ -181,6 +184,17 @@
           </div>
         </details>
 
+        <details class="wb-section" data-bereich="nacht">
+          <summary><span>Nacht-Schicht</span><small>Worky arbeitet, während du schläfst</small></summary>
+          <div class="ns-panel" id="nachtschicht"></div>
+        </details>
+
+        <details class="wb-section" data-bereich="material">
+          <summary><span>Material</span><small>Bilder, Modelle, Sounds für dieses Projekt</small></summary>
+          <div class="mt-panel" id="material"></div>
+          <button type="button" id="material-fill" data-fill="" hidden></button>
+        </details>
+
         <details class="wb-section" data-bereich="tresor" open>
           <summary><span>Obsidian-Tresor</span><small>Gemeinsames Gehirn</small></summary>
           <section class="obsidian-card" id="obsidian"><div class="obsidian-heading"><span class="obsidian-mark">◈</span><div><span class="section-kicker">GEMEINSAMES GEHIRN</span><h3>Obsidian-Tresor</h3></div></div><p>Verbinde deinen Tresor einmal. Die Auswahl bleibt lokal im Browser gespeichert; passende Markdown-Notizen werden vor jeder Chatfrage durchsucht. An die KI gehen nur relevante Ausschnitte. Aufgaben schreibt die Werkstatt erst nach Vorschau und deiner Freigabe in eine eigene Notiz.</p><div class="obsidian-actions"><button class="vault-button" id="connect-vault">Tresor lokal wählen <span>⌂</span></button><button class="vault-button" id="check-vault">Tresor prüfen <span>✓</span></button><button class="vault-button" id="save-vault" disabled>Aufgaben in Obsidian <span>↓</span></button><button class="vault-button" id="import-markdown">Notiz importieren <span>↑</span></button><button class="vault-button" id="export-markdown">Markdown exportieren <span>⇩</span></button><input id="markdown-file" type="file" accept=".md,text/markdown,text/plain" hidden /></div><small class="vault-note" id="vault-note">Noch kein Tresor ausgewählt. Der Browser fragt dich erst beim Auswählen nach Zugriff.</small></section>
@@ -215,6 +229,8 @@
     <script src="tastenkuerzel.js"></script>
     <script src="werkzeuge.js"></script>
     <script src="update-hinweis.js"></script>
+    <script src="nachtschicht.js"></script>
+    <script src="material.js"></script>
     <script src="arbeitsplatz.js"></script>
     <script src="start.js"></script>
   </body>

@@ -189,6 +189,8 @@
     grid.append(add, open);
 
     void showStatus(cards, main);
+    // Morgens: Bericht der Nacht-Schicht oben auf der Projektseite (nachtschicht.js)
+    void window.workflowNightReport?.(main);
 
     input.addEventListener('input', () => {
       const query = input.value.trim().toLocaleLowerCase('de');

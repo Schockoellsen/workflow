@@ -9,7 +9,7 @@
   const navButtons = [...document.querySelectorAll('[data-bereich-knopf]')];
   const areas = [...drawer.querySelectorAll('[data-bereich]')];
   const KEY = window.workflowKey ? window.workflowKey('workflow-bereich') : 'workflow-bereich';
-  const TITLES = { ideen: 'Ideen', aufgaben: 'Aufgaben', aenderungen: 'Änderungen', prompt: 'Prompt-Ersteller', team: 'KI-Team', werkzeuge: 'Werkzeuge & Assets', tresor: 'Obsidian-Tresor' };
+  const TITLES = { ideen: 'Ideen', aufgaben: 'Aufgaben', aenderungen: 'Änderungen', prompt: 'Prompt-Ersteller', team: 'KI-Team', nacht: 'Nacht-Schicht', material: 'Material', werkzeuge: 'Werkzeuge & Assets', tresor: 'Obsidian-Tresor' };
   // Unter dieser Breite liegt die Schublade über dem Chat statt daneben
   const overlay = window.matchMedia('(max-width: 1100px)');
 

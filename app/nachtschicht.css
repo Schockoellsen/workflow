@@ -1,0 +1,54 @@
+/* Ausbau 2026-10-22: Nacht-Schicht und Material-Ordner. Karten wie auf der Werkzeuge-Seite (werkzeuge.css),
+   Farben aus hell.css/nacht.css. */
+.ns-panel,.mt-panel{display:grid;gap:12px;margin:0 14px 14px}
+.ns-add{display:grid;gap:8px}
+.ns-add textarea{width:100%;box-sizing:border-box;min-height:70px;padding:10px 12px;border-radius:12px;border:1px solid var(--ls-line-2);background:var(--ls-well);color:var(--ls-text);font:inherit;font-size:13.5px;line-height:1.45;resize:vertical}
+.ns-add .primary-button{justify-self:start;min-height:36px;padding:0 14px;border-radius:10px;font-size:13px}
+.ns-list{margin:0;padding-left:22px;display:grid;gap:6px}
+.ns-task{font-size:13px;color:var(--ls-text)}
+.ns-task::marker{color:var(--ls-muted);font-weight:700}
+.ns-task{display:list-item}
+.ns-task > .ns-text{display:inline;white-space:pre-wrap;overflow-wrap:anywhere}
+.ns-task > .wz-actions{display:inline-flex;margin-left:8px;vertical-align:middle}
+.ns-task .tiny-action{min-width:28px}
+.ns-empty{margin:0;font-size:12.5px;color:var(--ls-muted)}
+.ns-plan{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px;color:var(--ls-text)}
+.ns-toggle{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.ns-plan input[type="time"]{min-height:32px;padding:0 8px;border-radius:9px;border:1px solid var(--ls-line-2);background:var(--ls-well);color:var(--ls-text);font:inherit;font-size:13px}
+.ns-now{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-radius:12px;background:var(--ls-mint-soft);color:var(--ls-text)}
+.ns-now strong{font-size:13px;flex:1 1 220px;overflow-wrap:anywhere}
+.ns-now .outline-button{min-height:32px;padding:0 12px;border-radius:9px;font-size:12.5px}
+.ns-run{display:grid;gap:6px;padding:10px 12px;border-radius:12px;background:var(--ls-panel-2);border:1px solid var(--ls-line)}
+.ns-run-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.ns-run-head strong{font-size:13px;color:var(--ls-text)}
+.ns-run-head a{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--ls-accent-hi)}
+.ns-run .wz-hint,.ns-run .wz-bad{margin:0}
+.ns-item summary{cursor:pointer;font-size:12.5px;color:var(--ls-text);overflow-wrap:anywhere}
+.ns-item pre{margin:6px 0;max-height:220px;overflow:auto;padding:8px 10px;border-radius:8px;background:var(--ls-well);border:1px solid var(--ls-line);font:12px/1.45 var(--ls-font,inherit);white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ls-text-2)}
+.ns-item .tiny-action{margin-top:4px}
+.ns-morning .ns-run{background:var(--ls-panel-2)}
+.ns-morning > .outline-button{justify-self:start;min-height:34px;padding:0 14px;border-radius:10px;font-size:13px}
+
+/* Material */
+.mt-drop{display:grid;gap:4px;justify-items:center;padding:18px 14px;border:2px dashed var(--ls-line-2);border-radius:14px;background:var(--ls-well);color:var(--ls-text);font:inherit;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
+.mt-drop strong{font-size:14px}
+.mt-drop span{font-size:12px;color:var(--ls-muted)}
+.mt-drop:hover,.mt-drop.over{border-color:var(--ls-accent);background:var(--ls-panel-2)}
+.mt-filter{display:flex;flex-wrap:wrap;gap:6px}
+.mt-filter[hidden]{display:none}
+.mt-chip{min-height:30px;padding:0 11px;border-radius:999px;border:1px solid var(--ls-line-2);background:transparent;color:var(--ls-text-2);font:600 12px var(--ls-font,inherit);cursor:pointer}
+.mt-chip.active{background:var(--ls-accent);border-color:var(--ls-accent);color:var(--ls-accent-ink)}
+.mt-chip[hidden]{display:none}
+.mt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.mt-grid > .ns-empty{grid-column:1/-1}
+.mt-item{display:grid;gap:6px;align-content:start;padding:8px;border-radius:12px;background:var(--ls-panel-2);border:1px solid var(--ls-line);min-width:0}
+.mt-view{display:grid;place-items:center;aspect-ratio:4/3;border-radius:9px;background:var(--ls-well);overflow:hidden}
+.mt-view img{width:100%;height:100%;object-fit:contain}
+.mt-icon{font-size:34px}
+.mt-item audio{width:100%;height:32px}
+.mt-item strong{font-size:12.5px;color:var(--ls-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mt-item small{font-size:11.5px;color:var(--ls-muted)}
+.mt-note{width:100%;box-sizing:border-box;min-height:30px;padding:0 8px;border-radius:8px;border:1px solid var(--ls-line-2);background:var(--ls-well);color:var(--ls-text);font:inherit;font-size:12px;transition:border-color .2s}
+.mt-note.saved{border-color:var(--ls-mint)}
+.mt-item .wz-actions{gap:4px}
+.mt-item .tiny-action{font-size:11.5px}
