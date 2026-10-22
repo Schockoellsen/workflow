@@ -186,8 +186,8 @@
     (grid.querySelector('.ws-card:not(:disabled)') || add).focus({ preventScroll: true });
   }
 
-  // Logo links oben am Arbeitsplatz führt zurück zur Projektseite
-  document.querySelector('.wb-logo')?.addEventListener('click', (event) => { event.preventDefault(); void showProjects(); });
+  // „Alle Projekte“ oben in der Seitenleiste führt zurück zur Projektseite
+  for (const element of document.querySelectorAll('[data-alle-projekte]')) element.addEventListener('click', (event) => { event.preventDefault(); void showProjects(); });
 
   if (!seen) showSplash();
   else if (!project) void showProjects();

@@ -260,6 +260,7 @@ ideaList.addEventListener('click', (event) => {
     const existing = tasks.find((task) => task.sourceIdeaId === idea.id && task.status !== 'zurueckgestellt');
     if (existing) {
       showToast('Zu dieser Idee gibt es schon einen Aufgabenentwurf.');
+      window.workflowShowArea?.('aufgaben');
       document.querySelector('#aufgaben').scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
@@ -279,6 +280,7 @@ ideaList.addEventListener('click', (event) => {
     saveAll();
     render();
     showToast('Aufgabenentwurf erstellt — wartet auf deine Freigabe.');
+    window.workflowShowArea?.('aufgaben');
     document.querySelector('#aufgaben').scrollIntoView({ behavior: 'smooth', block: 'start' });
     return;
   }

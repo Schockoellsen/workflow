@@ -1,0 +1,112 @@
+/* Arbeitsplatz im neuen Workflow-Design (Paket 2, Entwurf „Arbeitsplatz“ in claude.ai/artifact/RoKsCQ9dTto4p28WT6oZRA).
+   Seitenleiste links · Worky als Hauptfläche · Bereiche als Schublade rechts. Nutzt die Farben aus hell.css/nacht.css. */
+
+.wf-app{grid-template-columns:264px minmax(0,1fr) 0;grid-template-rows:minmax(0,1fr);transition:grid-template-columns .28s cubic-bezier(.2,.8,.2,1)}
+.wf-app.wf-drawer-open{grid-template-columns:264px minmax(0,1fr) minmax(360px,420px)}
+
+/* ===== Seitenleiste ===== */
+.wf-side{grid-column:1;grid-row:1;display:flex;flex-direction:column;gap:18px;padding:18px 14px 14px;background:var(--ls-sidebar);border-right:1px solid var(--ls-line);overflow-y:auto;min-height:0;box-sizing:border-box}
+.wf-back{display:flex;align-items:center;gap:8px;min-height:40px;padding:0 10px;border:0;border-radius:12px;background:transparent;color:var(--ls-text-2);font:500 14px var(--ls-font);cursor:pointer;text-align:left}
+.wf-back svg,.wf-nav svg{width:18px;height:18px;flex:0 0 18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.wf-back:hover,.wf-nav:hover{background:var(--ls-raised);color:var(--ls-text)}
+.wf-back:focus-visible,.wf-nav:focus-visible,.wf-project:focus-visible{outline:2px solid var(--ls-accent);outline-offset:2px}
+.wf-project{display:flex;align-items:center;gap:12px;width:100%;margin:0;padding:8px 10px;border-radius:14px}
+.wf-project-mark{width:40px;height:40px;flex:0 0 40px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg,#7b7ff0,#5b5fd6 55%,#2fd3c2);color:#fff;font:800 18px/1 var(--ls-display);box-shadow:0 6px 16px #5b5fd633}
+.wf-project-text{display:flex;flex-direction:column;min-width:0;flex:1}
+.wf-project-text strong{font:700 16px/1.2 var(--ls-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wf-project-text small{font-size:12px;color:var(--ls-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wf-nav-list{display:flex;flex-direction:column;gap:3px}
+.wf-nav{position:relative;display:flex;align-items:center;gap:11px;min-height:42px;padding:0 12px;border:0;border-radius:12px;background:transparent;color:var(--ls-text-2);font:500 14px var(--ls-font);cursor:pointer;text-align:left;transition:background-color .16s,color .16s}
+.wf-nav.active{background:var(--ls-accent-soft);color:var(--ls-accent-hi);font-weight:600}
+.wf-count{margin-left:auto;min-width:22px;padding:2px 8px;box-sizing:border-box;border-radius:999px;background:var(--ls-mint-soft);color:#0b7268;font:600 12px/1.3 var(--ls-font);text-align:center}
+.wf-programs{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--ls-line);border-radius:14px;background:var(--ls-panel)}
+.wf-programs-title{font-size:11px;font-weight:600;letter-spacing:.6px;color:var(--ls-muted)}
+.wf-programs .tool-group{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:0;border:0;background:transparent}
+.wf-programs .quick-app-button{justify-content:flex-start;min-height:36px;padding:0 10px;border-radius:9px;font-size:13px}
+.wf-side-foot{display:flex;align-items:center;gap:8px}
+.wf-ai-state{display:flex;align-items:center;gap:7px;flex:1;min-width:0;font-size:12px;color:var(--ls-muted)}
+.wf-ai-state i{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:var(--ls-ok)}
+.wf-ai-state small{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wf-side-foot .local-pill{padding:5px 9px;font-size:11.5px}
+
+/* ===== Worky in der Mitte ===== */
+.wf-app .wb-bench{grid-column:2;grid-row:1;background:var(--ls-panel)}
+.wf-app .wb-bench .chat-header{grid-template-columns:minmax(0,1fr) auto;padding:14px 24px 12px;gap:2px 12px}
+.wf-app .wb-chat-identity .worky-logo{width:42px;height:42px;border-radius:13px;animation:wf-bob 3s ease-in-out infinite}
+.wf-chat-who h3{margin:0;font:700 17px var(--ls-display)}
+html .wf-chat-who #chat-provider,html[data-theme="dark"] .wf-chat-who #chat-provider{appearance:none;-webkit-appearance:none;border:0;border-radius:8px;background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236a7189' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M7 10l5 5 5-5'/%3E%3C/svg%3E") right 4px center/16px no-repeat;padding:4px 30px 4px 4px;margin:0 0 0 -4px;font:700 17px var(--ls-display);color:var(--ls-text);cursor:pointer;max-width:100%;box-shadow:none;min-height:0}
+html .wf-chat-who #chat-provider:hover{background-color:var(--ls-raised)}
+.wf-chat-who #chat-provider:focus-visible{outline:2px solid var(--ls-accent);outline-offset:2px}
+html .wf-chat-who #chat-provider option,html .wf-chat-who #chat-provider optgroup{font-size:14px}
+.wf-chat-tools{display:flex;gap:8px;grid-column:2;grid-row:1;align-self:center}
+.wf-stop{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 14px;border:0;border-radius:10px;background:var(--ls-err);color:#fff;font:600 13px var(--ls-font);cursor:pointer}
+.wf-stop[hidden]{display:none}
+/* Status wie im Entwurf als kleine Zeile unter dem Namen, nicht als Kapsel */
+html .wf-app .wb-bench .chat-status{grid-column:1/-1;grid-row:2;justify-self:start;margin:0 0 0 55px;padding:0;border:0;background:transparent;font-size:12.5px;max-width:calc(100% - 55px);white-space:normal;line-height:1.45}
+.wf-app .wb-bench #chat-provider-description{grid-column:1/-1;grid-row:3;margin:2px 0 0 55px;font-size:12.5px;line-height:1.5;color:var(--ls-muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.wf-app .worky-chatbar{margin:0;padding:8px 24px;border-bottom:1px solid var(--ls-line);gap:8px}
+.wf-app .worky-chatbar select{flex:0 1 320px}
+.wf-app .worky-guard-toggle{margin-left:auto}
+.wf-app .wb-context>summary{padding:9px 24px}
+.wf-app .wb-bench .chat-compose{border-radius:20px;background:var(--ls-panel-2);box-shadow:0 1px 2px #1d22360d,0 10px 30px #1d223612}
+.wf-app .wb-bench .chat-compose:focus-within{border-color:var(--ls-accent);box-shadow:0 0 0 3px #5b5fd61f,0 10px 30px #1d223612}
+.wf-app .worky-quick button{border-radius:999px}
+.wf-app .chat-message.user{border-radius:18px 18px 4px 18px}
+.wf-app .chat-message.assistant,.wf-app .chat-message.worky{border-radius:18px 18px 18px 4px}
+@keyframes wf-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+
+/* ===== Schublade rechts ===== */
+.wf-drawer{grid-column:3;grid-row:1;visibility:hidden;opacity:0;transition:opacity .2s,visibility 0s .28s}
+.wf-drawer-open .wf-drawer{visibility:visible;opacity:1;transition:opacity .25s .08s}
+.wf-drawer-head{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px 12px 20px;background:var(--ls-sidebar);border-bottom:1px solid var(--ls-line)}
+.wf-drawer-head h2{margin:0;font:700 18px var(--ls-display)}
+.wf-drawer [data-bereich]{display:none}
+.wf-drawer [data-bereich].wf-shown{display:block}
+.wf-drawer section.wb-project-card.wf-shown{display:flex}
+.wf-drawer .wb-section>summary{display:none}
+.wf-drawer .wb-section{border-bottom:0;padding-top:14px}
+.wf-drawer .wb-project-card{background:var(--ls-sidebar);padding:18px 20px}
+.wf-drawer .wb-project-card+.wb-section{padding-top:0}
+.wf-drawer .wb-project-copy h2{font-size:22px}
+.wf-drawer .project-review{padding:0 14px 16px}
+.wf-drawer .project-review-heading{flex-wrap:wrap;gap:10px}
+.wf-drawer .project-diff-view pre{max-height:55vh}
+
+/* ===== Nachtmodus ===== */
+html[data-theme="dark"] .wf-count{color:#7fe7d8}
+html[data-theme="dark"] .wf-nav.active{color:#c4c6ff}
+html[data-theme="dark"] .wf-app .wb-bench{background:var(--ls-ground)}
+html[data-theme="dark"] .wf-app .wb-bench .chat-compose{box-shadow:0 10px 30px #0006}
+
+/* ===== Schmalere Fenster: Schublade liegt über dem Chat ===== */
+@media (max-width:1100px){
+  .wf-app,.wf-app.wf-drawer-open{grid-template-columns:232px minmax(0,1fr)}
+  .wf-drawer{position:fixed;top:0;right:0;bottom:0;width:min(420px,100vw);z-index:60;overflow-y:auto;box-shadow:-20px 0 60px #1d223633;transform:translateX(24px);transition:opacity .2s,transform .2s,visibility 0s .2s}
+  .wf-drawer-open .wf-drawer{transform:none;transition:opacity .2s,transform .25s cubic-bezier(.2,.8,.2,1)}
+}
+@media (max-width:980px){
+  body{overflow:hidden}
+  .wf-app,.wf-app.wf-drawer-open{height:100vh;height:100dvh;min-height:0;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+  .wf-side{grid-column:1;grid-row:1;flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:10px 12px;border-right:0;border-bottom:1px solid var(--ls-line);overflow:visible}
+  .wf-back{padding:0 8px;font-size:0;gap:0;min-width:40px;justify-content:center}
+  .wf-project{width:auto;flex:1;min-width:0;padding:4px 8px}
+  .wf-project-mark{width:34px;height:34px;flex-basis:34px;font-size:15px}
+  .wf-nav-list{order:5;width:100%;flex-direction:row;overflow-x:auto;scrollbar-width:none;gap:4px}
+  .wf-nav{flex:0 0 auto;min-height:38px;padding:0 12px}
+  .wf-programs{order:6;width:100%;margin:0;padding:0;border:0;background:transparent;flex-direction:row;align-items:center}
+  .wf-programs-title{display:none}
+  .wf-programs .tool-group{display:flex;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .wf-programs .quick-app-button{flex:0 0 auto}
+  .wf-side-foot{order:2;flex:0 0 auto}
+  .wf-ai-state{display:none}
+  .wf-app .wb-bench{grid-column:1;grid-row:2;height:auto;border-bottom:0}
+}
+@media (max-width:640px){
+  .wf-side-foot .local-pill{display:none}
+  .wf-app .wb-bench .chat-header{padding:12px 14px}
+  html .wf-app .wb-bench .chat-status,.wf-app .wb-bench #chat-provider-description{margin-left:0;max-width:100%}
+  .wf-app .chat-compose-footer{flex-wrap:wrap}
+  .wf-app #chat-hint{flex:1 1 100%}
+  .wf-app .worky-chatbar,.wf-app .wb-context>summary{padding-left:14px;padding-right:14px}
+}
+@media (prefers-reduced-motion:reduce){.wf-app,.wf-drawer{transition:none}.wf-app .wb-chat-identity .worky-logo{animation:none}}
