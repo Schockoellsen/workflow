@@ -7,7 +7,13 @@ import { appendFile, readFile, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 
-const KINDS = { stolperstein: 'Fehler gemerkt', regel: 'Neue Regel', allgemein: 'Für alle Projekte' };
+const KINDS = { stolperstein: 'Fehler gemerkt', regel: 'Neue Regel', allgemein: 'Für alle Projekte', skill: 'Neue Fähigkeit', app: 'Für Workflow' };
+// Lern-Runde nach einem Auftrag: nur Wissen. Verbesserungs-Runde (Paket 5): auch Fähigkeiten und App-Ideen.
+const ROUND_KINDS = ['stolperstein', 'regel', 'allgemein'];
+const IMPROVE_KINDS = Object.keys(KINDS);
+// Verbesserungs-Runde von selbst: frühestens nach 3 schlechten Läufen und höchstens einmal in 20 Stunden
+const IMPROVE_MIN_BAD = 3;
+const IMPROVE_GAP_MS = 20 * 60 * 60 * 1000;
 const LEARNED_HEADING = '## Von Worky gelernt';
 
 export function createLearning(dataDir) {
@@ -18,18 +24,21 @@ export function createLearning(dataDir) {
     try {
       const saved = JSON.parse(readFileSync(storeFile, 'utf8'));
       return {
-        settings: { shareGeneral: saved.settings?.shareGeneral !== false, autoRound: saved.settings?.autoRound !== false },
+        settings: { shareGeneral: saved.settings?.shareGeneral !== false, autoRound: saved.settings?.autoRound !== false, autoImprove: saved.settings?.autoImprove !== false },
         feedback: Array.isArray(saved.feedback) ? saved.feedback : [],
-        proposals: Array.isArray(saved.proposals) ? saved.proposals : []
+        failures: Array.isArray(saved.failures) ? saved.failures : [],
+        proposals: Array.isArray(saved.proposals) ? saved.proposals : [],
+        improveRounds: saved.improveRounds && typeof saved.improveRounds === 'object' ? saved.improveRounds : {}
       };
     } catch {
-      return { settings: { shareGeneral: true, autoRound: true }, feedback: [], proposals: [] };
+      return { settings: { shareGeneral: true, autoRound: true, autoImprove: true }, feedback: [], failures: [], proposals: [], improveRounds: {} };
     }
   }
   let store = load();
   function save() {
     // Nicht endlos wachsen lassen
     store.feedback = store.feedback.slice(-500);
+    store.failures = store.failures.slice(-200);
     store.proposals = store.proposals.slice(-300);
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(storeFile, JSON.stringify(store, null, 2), 'utf8');
@@ -44,9 +53,13 @@ export function createLearning(dataDir) {
       return readFileSync(file, 'utf8').split('\n').filter((line) => /^(- |\| )/.test(line) && !/^\|\s*-/.test(line)).length;
     } catch { return 0; }
   }
-  function countSkills(root) {
-    try { return readdirSync(path.join(root, '.claude', 'skills'), { withFileTypes: true }).filter((entry) => entry.isDirectory()).length; } catch { return 0; }
+  function skillNames(root) {
+    try { return readdirSync(path.join(root, '.claude', 'skills'), { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name); } catch { return []; }
   }
+  const countSkills = (root) => skillNames(root).length;
+  // Ordnername einer Fähigkeit: klein, Bindestriche, ohne Umlaute
+  const skillSlug = (value) => String(value || '').toLocaleLowerCase('de').replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
   // Fette Titel der vorhandenen Einträge, damit die Lern-Runde nichts doppelt vorschlägt
   function knownTitles(root) {
     const titles = [];
@@ -90,6 +103,12 @@ export function createLearning(dataDir) {
     return entry;
   }
 
+  // Abgebrochene Läufe merken, damit die Verbesserungs-Runde sie sieht (Timos Stopp-Knopf zählt nicht)
+  function addFailure(project, question, error) {
+    store.failures.push({ id: randomUUID(), project: project.id, question: clip(question, 600), error: clip(error, 800), at: new Date().toISOString() });
+    save();
+  }
+
   // Prompt für die Lern-Runde: nur echte, konkrete Lehren aus genau diesem Lauf, als JSON
   function roundPrompt(project, data) {
     const rejected = store.proposals.filter((item) => item.project === project.id && item.status === 'abgelehnt').slice(-12).map((item) => `- ${item.titel}`);
@@ -125,22 +144,29 @@ export function createLearning(dataDir) {
   }
 
   // Antwort der KI lesen: erstes {...} nehmen, Felder prüfen, Doppeltes aussortieren
-  function addProposals(project, raw, source) {
+  function addProposals(project, raw, source, kinds = ROUND_KINDS) {
     let parsed = null;
     const match = /\{[\s\S]*\}/.exec(String(raw || ''));
     if (match) { try { parsed = JSON.parse(match[0]); } catch { parsed = null; } }
-    const list = Array.isArray(parsed?.vorschlaege) ? parsed.vorschlaege.slice(0, 2) : [];
+    const list = Array.isArray(parsed?.vorschlaege) ? parsed.vorschlaege.slice(0, kinds === ROUND_KINDS ? 2 : 3) : [];
+    const skills = new Set(skillNames(project.root));
     const known = new Set([...knownTitles(project.root), ...store.proposals.map((item) => item.titel)].map((title) => title.toLocaleLowerCase('de')));
     const added = [];
     for (const item of list) {
-      const art = KINDS[item?.art] ? item.art : null;
+      const art = kinds.includes(item?.art) ? item.art : null;
       const titel = clip(item?.titel, 140).replace(/\*\*/g, '');
-      const text = clip(item?.text, 500).replace(/\n+/g, ' ');
+      // Fähigkeiten brauchen eine ganze Anleitung, App-Ideen eine genaue Beschreibung, der Rest ist eine Zeile
+      const text = art === 'skill' ? clip(item?.text, 4000) : art === 'app' ? clip(item?.text, 1500) : clip(item?.text, 500).replace(/\n+/g, ' ');
       if (!art || !titel || !text || known.has(titel.toLocaleLowerCase('de'))) continue;
       const proposal = {
         id: randomUUID(), project: project.id, projectName: project.name, art, titel, text,
         warum: clip(item?.warum, 300).replace(/\n+/g, ' '), source, status: 'offen', at: new Date().toISOString()
       };
+      if (art === 'skill') {
+        proposal.name = skillSlug(item?.name || titel);
+        proposal.beschreibung = clip(item?.beschreibung, 300).replace(/\n+/g, ' ');
+        if (!proposal.name || !proposal.beschreibung || skills.has(proposal.name)) continue;
+      }
       store.proposals.push(proposal);
       added.push(proposal);
     }
@@ -167,7 +193,16 @@ export function createLearning(dataDir) {
     if (!proposal) throw Object.assign(new Error('Diesen Vorschlag gibt es nicht mehr.'), { status: 404 });
     if (take) {
       const warum = proposal.warum ? ` *Warum:* ${proposal.warum}` : '';
-      if (proposal.art === 'allgemein') {
+      if (proposal.art === 'app') throw Object.assign(new Error('App-Ideen baut Worky in der Testkopie.'), { status: 400 });
+      if (proposal.art === 'skill') {
+        const project = projects.find((item) => item.id === proposal.project);
+        if (!project || !existsSync(project.root)) throw Object.assign(new Error('Das Projekt dieses Vorschlags ist nicht mehr da.'), { status: 409 });
+        const folder = path.join(project.root, '.claude', 'skills', proposal.name);
+        if (existsSync(folder)) throw Object.assign(new Error(`Eine Fähigkeit „${proposal.name}“ gibt es schon.`), { status: 409 });
+        mkdirSync(folder, { recursive: true });
+        const description = proposal.beschreibung.replace(/"/g, "'");
+        await writeFile(path.join(folder, 'SKILL.md'), `---\nname: ${proposal.name}\ndescription: "${description}"\n---\n\n# ${proposal.titel}\n\n${proposal.text}\n\n*Von Worky vorgeschlagen, von Timo übernommen am ${today()}.*\n`, 'utf8');
+      } else if (proposal.art === 'allgemein') {
         await appendUnderHeading(sharedFile, 'Wissen für alle Projekte', `- **${proposal.titel}** – ${proposal.text}${warum} *Gelernt:* ${today()} in ${proposal.projectName}.`);
       } else {
         const project = projects.find((item) => item.id === proposal.project);
@@ -182,8 +217,88 @@ export function createLearning(dataDir) {
     return proposal;
   }
 
+  // ---------- Verbesserungs-Runde (Paket 5) ----------
+  // Schlechte Läufe dieses Projekts seit der letzten Runde: 👎 und abgebrochene Aufträge
+  function badSince(project) {
+    const since = store.improveRounds[project.id] || '';
+    return {
+      down: store.feedback.filter((item) => item.project === project.id && item.rating === 'down' && item.at > since),
+      failures: store.failures.filter((item) => item.project === project.id && item.at > since)
+    };
+  }
+  function improveDue(project) {
+    if (!store.settings.autoImprove) return false;
+    const last = Date.parse(store.improveRounds[project.id] || '') || 0;
+    const bad = badSince(project);
+    return Date.now() - last > IMPROVE_GAP_MS && bad.down.length + bad.failures.length >= IMPROVE_MIN_BAD;
+  }
+  function markImproveRound(project) {
+    store.improveRounds[project.id] = new Date().toISOString();
+    save();
+  }
+
+  function improvePrompt(project, appSummary) {
+    const bad = badSince(project);
+    // Ohne neue schlechte Läufe die letzten ansehen, damit „Jetzt nachdenken“ nicht leer läuft
+    const down = (bad.down.length ? bad.down : store.feedback.filter((item) => item.project === project.id && item.rating === 'down')).slice(-10);
+    const failures = (bad.failures.length ? bad.failures : store.failures.filter((item) => item.project === project.id)).slice(-10);
+    const rejected = store.proposals.filter((item) => (item.project === project.id || item.art === 'app') && item.status === 'abgelehnt').slice(-15).map((item) => `- ${item.titel}`);
+    const open = store.proposals.filter((item) => item.status === 'offen' || item.status === 'testkopie').slice(-15).map((item) => `- ${item.titel}`);
+    return [
+      `Du bist die Verbesserungs-Runde von Worky (KI-Assistent in Timos App Workflow), gerade im Projekt „${project.name}“ (${project.kindLabel}).`,
+      'Unten stehen Läufe, die schlecht waren: Antworten mit 👎 (mit Timos Kommentar) und abgebrochene Aufträge. Finde die Ursachen, die sich wiederholen, und schlag vor, was Worky künftig besser macht.',
+      'Regeln:',
+      '- Höchstens 3 Vorschläge, die wichtigsten zuerst. Gibt es kein klares Muster, gib eine leere Liste zurück.',
+      '- art „stolperstein“ oder „regel“: Wissen für dieses Projekt (titel kurz, text 1 bis 2 Sätze, warum 1 Satz).',
+      '- art „allgemein“: Wissen, das in jedem Spiel hilft.',
+      '- art „skill“: eine neue Fähigkeit (fester Ablauf, den Worky in diesem Projekt immer gleich abarbeitet). Felder: name (kurz, klein, mit Bindestrichen), beschreibung (1 Satz: wann Worky sie benutzt), text (die Anleitung als nummerierte Schritte in Markdown, höchstens 40 Zeilen), warum. Nur wenn ein Ablauf mehrmals schiefging.',
+      '- art „app“: eine Verbesserung an der App Workflow selbst (Bedienung, Anzeige, Fehlermeldungen, Abläufe). text: genau beschreiben, was sich ändern soll und woran Timo es merkt, 2 bis 6 Sätze. Nur wenn das Problem an der App liegt, nicht am Projekt. Nie Sicherheitsregeln, Sperren oder Freigabe-Karten lockern.',
+      '- Nichts erfinden. Nur was aus den Läufen unten hervorgeht. Alles auf Deutsch, einfache Sprache.',
+      'Antworte NUR mit JSON in genau dieser Form, ohne Text davor oder danach:',
+      '{"vorschlaege":[{"art":"app","titel":"…","text":"…","warum":"…"},{"art":"skill","name":"…","titel":"…","beschreibung":"…","text":"…","warum":"…"}]}',
+      '',
+      `Was Workflow kann (kurz): ${appSummary}`,
+      `Vorhandene Fähigkeiten in diesem Projekt: ${skillNames(project.root).join(', ') || '(keine)'}`,
+      '',
+      'ANTWORTEN MIT 👎:',
+      ...(down.length ? down.map((item) => `- Auftrag: ${clip(item.question, 300)}\n  Timos Kommentar: ${item.note || '(keiner)'}\n  Antwort (Anfang): ${clip(item.answer, 400)}`) : ['- (keine)']),
+      '',
+      'ABGEBROCHENE AUFTRÄGE:',
+      ...(failures.length ? failures.map((item) => `- Auftrag: ${clip(item.question, 300)}\n  Fehler: ${clip(item.error, 400)}`) : ['- (keine)']),
+      '',
+      'SCHON BEKANNT (nicht nochmal vorschlagen):',
+      ...knownTitles(project.root).slice(-60).map((title) => `- ${title}`), ...open,
+      '',
+      'VON TIMO ABGELEHNT (nicht nochmal vorschlagen):',
+      ...(rejected.length ? rejected : ['- (nichts)'])
+    ].join('\n');
+  }
+  const improveKinds = IMPROVE_KINDS;
+
+  // Eigene Idee von Timo für die App: wird direkt ein Vorschlag „Für Workflow“
+  function addIdea(project, text) {
+    const idea = clip(text, 1500);
+    if (idea.length < 8) throw Object.assign(new Error('Beschreib deine Idee bitte in ein, zwei Sätzen.'), { status: 400 });
+    const proposal = {
+      id: randomUUID(), project: project.id, projectName: project.name, art: 'app', titel: clip(idea.split(/[.!?\n]/)[0], 80) || 'Idee von Timo',
+      text: idea, warum: '', source: 'timo', status: 'offen', at: new Date().toISOString()
+    };
+    store.proposals.push(proposal);
+    save();
+    return proposal;
+  }
+  const findProposal = (id) => store.proposals.find((item) => item.id === id) || null;
+  function setProposalStatus(id, status, extra = {}) {
+    const proposal = findProposal(id);
+    if (!proposal) return null;
+    Object.assign(proposal, extra, { status, decidedAt: new Date().toISOString() });
+    save();
+    return proposal;
+  }
+
   function overview(project, agentCount) {
-    const mine = (item) => item.project === project.id || item.art === 'allgemein';
+    // Wissen für alle Projekte und App-Ideen gelten überall, der Rest nur im eigenen Projekt
+    const mine = (item) => item.project === project.id || item.art === 'allgemein' || item.art === 'app';
     let shared = [];
     try { shared = readFileSync(sharedFile, 'utf8').split('\n').filter((line) => line.startsWith('- ')).slice(-12).reverse(); } catch { shared = []; }
     const feedback = store.feedback.filter((item) => item.project === project.id);
@@ -200,18 +315,23 @@ export function createLearning(dataDir) {
       },
       proposals: store.proposals.filter((item) => item.status === 'offen' && mine(item)).reverse(),
       learned: store.proposals.filter((item) => item.status === 'uebernommen' && mine(item)).slice(-8).reverse(),
-      shared
+      shared,
+      lastImprove: store.improveRounds[project.id] || null
     };
   }
 
   function setSettings(data) {
     if (typeof data.shareGeneral === 'boolean') store.settings.shareGeneral = data.shareGeneral;
     if (typeof data.autoRound === 'boolean') store.settings.autoRound = data.autoRound;
+    if (typeof data.autoImprove === 'boolean') store.settings.autoImprove = data.autoImprove;
     save();
     return store.settings;
   }
 
-  const openCount = (project) => store.proposals.filter((item) => item.status === 'offen' && (item.project === project.id || item.art === 'allgemein')).length;
+  const openCount = (project) => store.proposals.filter((item) => item.status === 'offen' && (item.project === project.id || item.art === 'allgemein' || item.art === 'app')).length;
 
-  return { addFeedback, roundPrompt, addProposals, decide, overview, setSettings, sharedKnowledge, openCount, settings: () => store.settings };
+  return {
+    addFeedback, addFailure, roundPrompt, addProposals, decide, overview, setSettings, sharedKnowledge, openCount, settings: () => store.settings,
+    improvePrompt, improveDue, markImproveRound, improveKinds, addIdea, findProposal, setProposalStatus
+  };
 }

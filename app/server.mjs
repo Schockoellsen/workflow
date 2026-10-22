@@ -10,6 +10,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createProjectFiles } from './vorlagen.mjs';
 import { createLearning } from './lernen.mjs';
+import { createTestCopy } from './testkopie.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 // ===== Projekte: Workflow arbeitet immer im gerade gewählten Projekt =====
@@ -92,6 +93,7 @@ const CLAUDE_STUDIO_READ_TOOLS = [
   'mcp__werkstatt_tools__sound_suche'
 ];
 // Voll-Modus (Worky = Claude Code): ohne Rückfrage erlaubt. Alles andere (andere Befehle, Studio ändern …) → Freigabe-Karte.
+// SPERRE-ANFANG (Worky darf diesen Abschnitt in der Testkopie nicht ändern, siehe testkopie.mjs)
 const CLAUDE_FULL_ALLOWED_TOOLS = [
   'Read', 'Glob', 'Grep', 'Edit', 'Write', 'Agent', 'Task', 'Skill', 'TodoWrite', 'WebSearch',
   'Bash(sh tools/check_all.sh)', 'Bash(sh tools/check_modules.sh)', 'Bash(sh tools/codepruefung.sh:*)', 'Bash(sh tools/codepruefung.sh)', 'Bash(sh tools/preview/machine.sh:*)', 'Bash(sh tools/preview/cave.sh:*)', 'Bash(sh tools/balance/tabelle.sh:*)', 'Bash(sh tools/balance/simulation.sh:*)',
@@ -114,6 +116,7 @@ const CLAUDE_FULL_DENIED_TOOLS = [
   'EnterWorktree', 'ExitWorktree', 'SendMessage', 'ListAgents', 'ReportFindings', 'TaskStop',
   'Bash(gh pr merge:*)', 'Bash(gh repo delete:*)', 'Bash(gh repo edit:*)', 'Bash(gh auth:*)', 'Bash(gh secret:*)'
 ];
+// SPERRE-ENDE
 function workshopFullRules() {
   const roblox = PROJECT?.kind === 'roblox';
   return [
@@ -165,11 +168,13 @@ function sendJson(response, status, value) {
   response.end(JSON.stringify(value));
 }
 
+// SPERRE-ANFANG (Worky darf diesen Abschnitt in der Testkopie nicht ändern, siehe testkopie.mjs)
 function requestIsLocal(request) {
   const host = request.headers.host;
   const origin = request.headers.origin;
   return host === `${HOST}:${PORT}` && (!origin || origin === `http://${HOST}:${PORT}`);
 }
+// SPERRE-ENDE
 
 function readJson(request, limit = MAX_BODY) {
   return new Promise((resolve, reject) => {
@@ -507,11 +512,12 @@ async function openObsidianVault() {
 }
 
 // onLine (optional): bekommt jede fertige Ausgabezeile sofort (für Live-Text im Chat)
-function runClaude(args, input = '', timeoutMs = 120_000, onLine = null, signal = undefined) {
-  return trackRun(new Promise((resolve, reject) => {
+// cwd: sonst das gewählte Projekt (die Testkopie baut in ihrem eigenen Ordner); track = Projektwechsel solange sperren
+function runClaude(args, input = '', timeoutMs = 120_000, onLine = null, signal = undefined, cwd = PROJECT_ROOT, track = true) {
+  const run = new Promise((resolve, reject) => {
     const child = spawn(CLAUDE_COMMAND, args, {
       signal,
-      cwd: PROJECT_ROOT,
+      cwd,
       shell: process.platform === 'win32' && CLAUDE_COMMAND.toLowerCase().endsWith('.cmd'),
       windowsHide: true,
       stdio: ['pipe', 'pipe', 'pipe']
@@ -578,7 +584,8 @@ function runClaude(args, input = '', timeoutMs = 120_000, onLine = null, signal 
       resolve(stdout);
     });
     child.stdin.end(input);
-  }));
+  });
+  return track ? trackRun(run) : run;
 }
 
 function runCodex(args, input = '', timeoutMs = 120_000) {
@@ -1347,6 +1354,7 @@ function publicApproval(item) {
 }
 
 // Vom Freigabe-MCP: wartet, bis Timo entscheidet (oder die Zeit abläuft = abgelehnt).
+// SPERRE-ANFANG (Worky darf diesen Abschnitt in der Testkopie nicht ändern, siehe testkopie.mjs)
 async function handleApprovalRequest(request, response) {
   if (request.headers['x-approval-token'] !== APPROVAL_TOKEN) return sendJson(response, 403, { error: 'Ungültiges Freigabe-Token.' });
   let data;
@@ -1387,6 +1395,7 @@ async function handleApprovalDecision(request, response) {
   else item.resolve({ decision: 'deny', reason: 'Timo hat diese Aktion in der Werkstatt abgelehnt.' });
   return sendJson(response, 200, { ok: true });
 }
+// SPERRE-ENDE
 
 async function handleChat(request, response, preParsed) {
   let data = preParsed;
@@ -1485,6 +1494,7 @@ async function handleChat(request, response, preParsed) {
     ? ['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--permission-mode', 'acceptEdits', '--max-turns', '100']
     : ['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose',
       '--permission-mode', 'acceptEdits', '--restricted', '--tools', readOnly ? 'Read,Glob,Grep' : 'Read,Write,Edit,Glob,Grep', '--max-turns', fast ? '4' : '12'];
+  // SPERRE-ANFANG (Worky darf diesen Abschnitt in der Testkopie nicht ändern, siehe testkopie.mjs)
   if (full) {
     // Spezialist mit Schreibrecht läuft als echter Agent aus .claude/agents (Rollen-Datei = Agent-Name)
     const roleName = typeof data.agent?.role === 'string' ? data.agent.role.replace(/\.md$/, '') : '';
@@ -1495,6 +1505,7 @@ async function handleChat(request, response, preParsed) {
     if (data.agent && data.agent.write !== true) args.push('--disallowedTools', 'Edit', 'Write', 'NotebookEdit');
     args.push('--disallowedTools', ...CLAUDE_FULL_DENIED_TOOLS);
     args.push('--mcp-config', await prepareClaudeMcpConfig(), '--strict-mcp-config', '--permission-prompt-tool', APPROVAL_TOOL);
+    // SPERRE-ENDE
   } else if (fast) {
     // Schnellweg: Sonnet mit wenig Denkaufwand und ohne Studio-Verbindung (spart Start- und Denkzeit)
     args.push('--model', 'sonnet', '--effort', 'low', '--strict-mcp-config');
@@ -1632,6 +1643,8 @@ async function handleChat(request, response, preParsed) {
     return reply(200, { reply: result.result, sessionId: returnedSessionId || data.sessionId || null, memorySaved, activity, fast, checkpoint, usage });
   } catch (error) {
     const memorySaved = await tryRecordChatFailure(providerName, message, error, contextNotes);
+    // Für die Verbesserungs-Runde: abgebrochene Läufe merken (Timos Stopp-Knopf zählt nicht)
+    if (!abort.signal.aborted) { learning.addFailure(learningProject(), message, error.message || ''); maybeImprove(); }
     const checkpoint = await finishCheckpoint();
     return reply(502, { error: error.message || 'Claude ist gerade nicht erreichbar.', memorySaved, checkpoint });
   }
@@ -1908,20 +1921,101 @@ function learningProject() {
   return { id: PROJECT.id, name: PROJECT.name, kindLabel: PROJECT_KINDS[PROJECT.kind] || 'Spiel', root: PROJECT_ROOT };
 }
 
+// Kurze Claude-Anfrage ohne Werkzeuge (Lern-Runde, Verbesserungs-Runde, Prüfer der Testkopie): nur Text rein, Text raus
+async function askClaudeText(prompt, effort = 'low') {
+  const args = ['-p', '--output-format', 'json', '--model', 'sonnet', '--effort', effort, '--restricted', '--tools', '', '--strict-mcp-config', '--max-turns', '1'];
+  const raw = await runClaude(args, prompt, 5 * 60_000, null, undefined, PROJECT_ROOT || HERE, false);
+  const result = JSON.parse(raw);
+  if (result.is_error || typeof result.result !== 'string') throw new Error(String(result.result || 'Claude hat nichts geliefert.'));
+  return result.result;
+}
+async function askClaudeJson(prompt) {
+  const match = /\{[\s\S]*\}/.exec(await askClaudeText(prompt));
+  if (!match) throw new Error('Der Prüfer hat kein lesbares Ergebnis geliefert.');
+  return JSON.parse(match[0]);
+}
+
 // Lern-Runde: eine kurze Claude-Anfrage ohne Werkzeuge, die 0 bis 2 Vorschläge liefert. Übernommen wird nur per Klick.
 async function runLearningRound(data) {
   const project = learningProject();
-  const prompt = learning.roundPrompt(project, data);
-  const args = ['-p', '--output-format', 'json', '--model', 'sonnet', '--effort', 'low', '--restricted', '--tools', '', '--strict-mcp-config', '--max-turns', '1'];
-  const raw = await runClaude(args, prompt, 3 * 60_000);
-  const result = JSON.parse(raw);
-  if (result.is_error || typeof result.result !== 'string') throw new Error(String(result.result || 'Die Lern-Runde hat nichts geliefert.'));
-  return learning.addProposals(project, result.result, data.source);
+  return learning.addProposals(project, await askClaudeText(learning.roundPrompt(project, data)), data.source);
+}
+
+// ===== Worky verbessert sich selbst (Paket 5) =====
+// Verbesserungs-Runde: liest 👎 und abgebrochene Läufe und schlägt Regeln, Fähigkeiten (Skills) oder App-Verbesserungen
+// vor. App-Verbesserungen baut Worky nur in der Testkopie (testkopie.mjs), Timo probiert sie aus und entscheidet.
+const APP_SUMMARY = 'Projektliste und neue Projekte aus Vorlagen; Chat mit Worky (Schnell = nur lesen, Gründlich = Claude Code mit Skills, Spezialisten, Freigabe-Karten); Roblox Studio, Blender, Rojo, GitHub Desktop und Obsidian per Knopf; Aufgaben, Änderungen mit Rückgängig, Fehler-Wächter, Prompt-Ersteller, Seite „Worky lernt“ mit Daumen und Vorschlägen.';
+let improving = false;
+async function runImproveRound() {
+  if (improving) throw Object.assign(new Error('Worky denkt gerade schon nach.'), { status: 409 });
+  improving = true;
+  try {
+    const project = learningProject();
+    const raw = await askClaudeText(learning.improvePrompt(project, APP_SUMMARY), 'medium');
+    learning.markImproveRound(project);
+    return learning.addProposals(project, raw, 'verbesserung', learning.improveKinds);
+  } finally {
+    improving = false;
+  }
+}
+// Von selbst: nach 3 schlechten Läufen, höchstens einmal in 20 Stunden, im Hintergrund
+function maybeImprove() {
+  if (PROJECT && !improving && learning.improveDue(learningProject())) runImproveRound().catch((error) => console.error(`Verbesserungs-Runde: ${error.message}`));
+}
+
+const testCopy = createTestCopy({
+  appDir: HERE, dataDir: DATA_DIR, gitCommand: GIT_COMMAND, askClaude: askClaudeJson, isBusy: () => activeRuns > 0,
+  runClaude: (args, input, timeoutMs, cwd) => runClaude(args, input, timeoutMs, null, undefined, cwd, false)
+});
+
+async function handleTestCopy(request, response, pathname) {
+  if (request.method === 'GET' && pathname === '/api/testkopie') return sendJson(response, 200, await testCopy.status());
+  if (request.method !== 'POST') return sendJson(response, 405, { error: 'Diese Anfrage ist nicht erlaubt.' });
+  // SPERRE-ANFANG (Worky darf diesen Abschnitt in der Testkopie nicht ändern, siehe testkopie.mjs)
+  // Bauen, Übernehmen (Push) und Verwerfen nur per Klick auf der Workflow-Seite
+  if (request.headers.origin !== `http://${HOST}:${PORT}`) return sendJson(response, 403, { error: 'Die Testkopie lässt sich nur über die Workflow-Seite steuern.' });
+  // SPERRE-ENDE
+  let data;
+  try { data = await readJson(request, MAX_BODY); } catch (error) { return sendJson(response, 400, { error: error.message }); }
+  try {
+    if (pathname === '/api/testkopie/bauen') {
+      // Erst prüfen, ob gebaut werden kann, damit keine halbe Idee liegen bleibt
+      const current = await testCopy.status();
+      if (!current.available) return sendJson(response, 409, { error: current.why });
+      if (current.status !== 'leer' && current.status !== 'pr') return sendJson(response, 409, { error: 'Es gibt schon eine Testkopie. Übernimm oder verwirf sie zuerst.' });
+      let proposal = learning.findProposal(String(data.id || ''));
+      if (!proposal && typeof data.idee === 'string') {
+        if (!PROJECT) return sendJson(response, 409, { error: 'Wähle zuerst ein Projekt.' });
+        proposal = learning.addIdea(learningProject(), data.idee);
+      }
+      if (!proposal || proposal.art !== 'app' || proposal.status !== 'offen') return sendJson(response, 404, { error: 'Diesen Vorschlag gibt es nicht mehr.' });
+      const state = await testCopy.start(proposal);
+      learning.setProposalStatus(proposal.id, 'testkopie');
+      return sendJson(response, 200, state);
+    }
+    if (pathname === '/api/testkopie/starten') return sendJson(response, 200, await testCopy.serverStart());
+    if (pathname === '/api/testkopie/stoppen') { testCopy.serverStop(); return sendJson(response, 200, await testCopy.status()); }
+    if (pathname === '/api/testkopie/uebernehmen') {
+      const state = await testCopy.adopt();
+      learning.setProposalStatus(state.proposalId, 'uebernommen', { prUrl: state.prUrl || '' });
+      return sendJson(response, 200, state);
+    }
+    if (pathname === '/api/testkopie/verwerfen') {
+      const { proposalId } = await testCopy.discard();
+      // Die Idee bleibt als Vorschlag stehen: nochmal bauen lassen oder „Nein danke“
+      if (proposalId) learning.setProposalStatus(proposalId, 'offen');
+      return sendJson(response, 200, await testCopy.status());
+    }
+    if (pathname === '/api/testkopie/aktualisieren') return sendJson(response, 200, await testCopy.update());
+  } catch (error) {
+    return sendJson(response, error.status || 502, { error: error.message || 'Die Testkopie macht gerade Probleme.' });
+  }
+  return sendJson(response, 404, { error: 'Unbekannte Testkopie-Anfrage.' });
 }
 
 async function handleLearning(request, response, pathname) {
   if (request.method === 'GET' && pathname === '/api/lernen') {
-    return sendJson(response, 200, { project: { id: PROJECT.id, name: PROJECT.name }, ...learning.overview(learningProject(), (await loadAgents()).length) });
+    return sendJson(response, 200, { project: { id: PROJECT.id, name: PROJECT.name }, improving, ...learning.overview(learningProject(), (await loadAgents()).length) });
   }
   if (request.method !== 'POST') return sendJson(response, 405, { error: 'Diese Anfrage ist nicht erlaubt.' });
   let data;
@@ -1932,6 +2026,7 @@ async function handleLearning(request, response, pathname) {
       const entry = learning.addFeedback(learningProject(), data);
       // 👎: Worky überlegt gleich, was er daraus lernen kann (auch wenn die automatische Runde aus ist)
       const added = entry.rating === 'down' ? await runLearningRound(roundData('daumen')) : [];
+      if (entry.rating === 'down') maybeImprove();
       return sendJson(response, 200, { ok: true, added: added.length, open: learning.openCount(learningProject()) });
     }
     if (pathname === '/api/lernen/runde') {
@@ -1944,6 +2039,10 @@ async function handleLearning(request, response, pathname) {
       return sendJson(response, 200, { proposal, open: learning.openCount(learningProject()) });
     }
     if (pathname === '/api/lernen/einstellungen') return sendJson(response, 200, { settings: learning.setSettings(data) });
+    if (pathname === '/api/lernen/verbessern') {
+      const added = await runImproveRound();
+      return sendJson(response, 200, { added: added.length, open: learning.openCount(learningProject()) });
+    }
   } catch (error) {
     return sendJson(response, error.status || 502, { error: error.message || 'Worky lernt gerade nicht.' });
   }
@@ -2010,6 +2109,7 @@ const server = createServer(async (request, response) => {
   const pathname = requestUrl.pathname;
 
   if (pathname.startsWith('/api/projekte')) return handleProjects(request, response, pathname);
+  if (pathname === '/api/testkopie' || pathname.startsWith('/api/testkopie/')) return handleTestCopy(request, response, pathname);
   // Ohne gewähltes Projekt weiß keine KI, wo sie arbeiten soll
   if (!PROJECT && pathname.startsWith('/api/') && !pathname.endsWith('/status') && pathname !== '/api/agents' && pathname !== '/api/approvals') {
     return sendJson(response, 409, { error: 'Wähle zuerst oben ein Projekt aus (oder füge eins hinzu).' });

@@ -6,10 +6,13 @@ Workflow ist Timos lokale App zum Bauen von Spielen mit Worky (früher „IE Wer
 
 - Node-Server `app/server.mjs` (nur 127.0.0.1:4180), Seite `app/index.html` mit einfachen Skripten, keine Pakete, kein Build.
 - Worky arbeitet immer im Ordner des gewählten Projekts (`PROJECT_ROOT`), nie im Workflow-Ordner selbst.
+<!-- SPERRE-ANFANG (Worky darf das in der Testkopie nicht ändern) -->
 - Schlüssel nur in `app/.env.local` (git-ignoriert), nie lesen, ausgeben oder committen.
 - Sperren für Worky bleiben: kein Push auf main, kein Force-Push, kein Merge, kein reset/rebase, Zweige nicht löschen.
+<!-- SPERRE-ENDE -->
 - Kommentare und UI-Texte deutsch, Bezeichner englisch.
 - Neue Projekte entstehen aus Vorlagen in `app/vorlagen.mjs` (Roblox, Browser-Spiel, Godot, Unity, Anderes); Browser-Spiele zeigt `/spiel/` in einer Sandbox ohne Zugriff auf die Workflow-API.
 - Worky lernt (`app/lernen.mjs`): Lern-Runde und 👎 erzeugen nur Vorschläge in `app/daten/lernen.json`. In den Tresor (`Stolpersteine.md`, `Wissensdatenbank.md`) oder ins Wissen für alle Projekte (`app/daten/wissen/Allgemein.md`) kommt etwas erst nach Timos Klick auf „Übernehmen“.
+- Worky verbessert sich selbst (`app/testkopie.mjs`): Die Verbesserungs-Runde liest 👎 und abgebrochene Läufe und schlägt auch Fähigkeiten (Skills) und App-Verbesserungen vor. Workflow selbst ändert Worky nur in einer Testkopie (git worktree `<workflow>-testkopie`, Port 4181). „Übernehmen“ macht daraus einen Pull Request, mergen macht Timo. Gesperrt sind `app/testkopie.mjs`, `app/approval-mcp.mjs`, `.gitignore`, `Start-Workflow.bat` und alles zwischen den Sperr-Markierungen; danach prüft ein zweiter Claude die Änderung.
 - Vor jedem Commit: `for f in app/*.js app/*.mjs; do node --check "$f"; done`.
 - Plan in Paketen: P1 Projekte, P2 neues Design, P3 neue Projekte mit Vorlagen, P4 Lernen, P5 Selbst-Verbesserung über Testkopie. Design-Entwurf: https://claude.ai/artifact/RoKsCQ9dTto4p28WT6oZRA
