@@ -711,6 +711,9 @@ async function sendWorkyMessage(message, forcedLead, images = []) {
     rememberWorky({ kind: 'worky', text: String(result.reply || ''), activity: Array.isArray(result.activity) ? result.activity : [], agent: leadAgent ? leadAgent.id : null });
     if (result.checkpoint) addUndoButton(bubble, result.checkpoint);
     if (result.usage) showUsage(bubble, result.usage);
+    // Worky lernt (Paket 4): Daumen unter der Antwort; nach Gründlich-Aufträgen mit Änderungen eine kurze Lern-Runde
+    window.workflowLearn?.afterAnswer(bubble, { question: message, answer: String(result.reply || ''), activity: Array.isArray(result.activity) ? result.activity : [],
+      autoRound: !fastLane && Array.isArray(result.activity) && result.activity.some((item) => /geändert|erstellt|changed|created/i.test(item)) });
     // Wurde etwas geändert, gibt es unter der Antwort einen Knopf für den Selbsttest in Studio
     if (Array.isArray(result.activity) && result.activity.some((item) => /geändert|erstellt/i.test(item))) addSelfTestButton(bubble);
     // Team-Runde: Hat ein Spezialist mit Schreibrecht Dateien geändert, schaut der Prüfer (reviewer in agents.json) automatisch drüber.
@@ -794,6 +797,7 @@ async function sendWorkyMessage(message, forcedLead, images = []) {
     bubble.body.textContent = error.message || 'Worky konnte gerade nicht antworten.';
     if (error.checkpoint) addUndoButton(bubble, error.checkpoint);
     setClaudeStatus('error', 'Worky: Anfrage fehlgeschlagen');
+    if (claudeReady) window.workflowLearn?.afterError(bubble, message, error.message || '');
   } finally {
     bubble.item.classList.remove('thinking');
     claudeMessages.scrollTop = claudeMessages.scrollHeight;
