@@ -14,6 +14,8 @@ import { createTestCopy } from './testkopie.mjs';
 import { createTools } from './werkzeuge.mjs';
 import { createBackups } from './sicherung.mjs';
 import { createOwnTemplates } from './eigene-vorlagen.mjs';
+import { createMaterial } from './material.mjs';
+import { createNightShift } from './nachtschicht.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 // ===== Projekte: Workflow arbeitet immer im gerade gewählten Projekt =====
@@ -52,6 +54,7 @@ const HOST = '127.0.0.1';
 // Worky-Werkzeuge (Ausbau 2026-10-22): Roblox-Doku, Lune, Browser-Spiel-Test, Godot; Sicherung; eigene Vorlagen
 const tools = createTools({ dataDir: DATA_DIR, gitCommand: GIT_COMMAND });
 const backups = createBackups({ dataDir: DATA_DIR, appDir: HERE });
+const material = createMaterial();
 const ownTemplates = createOwnTemplates({ dataDir: DATA_DIR, gitCommand: GIT_COMMAND, slug: (name, taken) => projectSlug(name, taken) });
 // Eigener Port, damit die alte IE Werkstatt (4173) während des Umzugs parallel laufen kann
 const PORT = Number(process.env.WORKFLOW_PORT || 4180);
@@ -143,6 +146,17 @@ function workshopFullRules() {
   ...(roblox ? ['Selbsttest: Hast du Spielcode (src/) geändert und ist Roblox Studio verbunden, teste die Änderung danach selbst mit dem Skill selbsttest (Play über Freigabe-Karte, Konsole filtern, gezielt messen, Play stoppen) und berichte mit ✅/❌. Läuft Play schon (Timo spielt), nur die Konsole lesen und fragen.'] : []),
   'Am Ende jeder Aufgabe: was du geändert hast, was dein Selbsttest ergeben hat, was Timo noch selbst testen muss (Gefühl, Optik) und was noch offen ist.'
   ].join('\n');
+}
+
+// Material-Ordner: Liste der Dateien, die Timo für das Projekt gesammelt hat (leer = keine Regel)
+function materialRule(list, kind) {
+  if (!list) return '';
+  const use = kind === 'roblox'
+    ? 'Für Roblox brauchen Bilder, Sounds und Modelle eine Asset-ID: Hochladen macht Timo (Creator Hub oder Studio-Import), du baust danach die ID ein. Modelle (.fbx, .obj, .glb) kannst du in Blender öffnen und vorbereiten.'
+    : kind === 'web'
+      ? 'Im Browser-Spiel bindest du sie mit relativem Pfad ein (z. B. material/bilder/held.png); die Vorschau /spiel/ liefert sie aus.'
+      : 'Binde sie mit ihrem Pfad im Projekt ein.';
+  return `\nMaterial von Timo (Ordner material/ im Projekt, Beschreibungen hinter dem Doppelpunkt): Bevor du Bilder, Modelle oder Sounds erfindest oder suchst, nimm passendes Material von hier. Bilder kannst du mit Read ansehen. ${use}\n${list}`;
 }
 
 // Regeln zu den Werkzeugen aus dem Ausbau 2026-10-22, je nach Projektart und was installiert ist
@@ -1548,7 +1562,7 @@ async function handleChat(request, response, preParsed) {
     // Spezialist mit Schreibrecht läuft als echter Agent aus .claude/agents (Rollen-Datei = Agent-Name)
     const roleName = typeof data.agent?.role === 'string' ? data.agent.role.replace(/\.md$/, '') : '';
     if (/^[a-z0-9-]{2,40}$/.test(roleName) && existsSync(path.join(ROLES_ROOT, `${roleName}.md`))) args.push('--agent', roleName);
-    args.push('--append-system-prompt', workshopFullRules() + (data.agent ? `\nIn dieser Runde arbeitest du als Spezialist „${data.agent.name}“.` : ''));
+    args.push('--append-system-prompt', workshopFullRules() + materialRule(await material.summary(PROJECT_ROOT).catch(() => ''), PROJECT.kind) + (data.agent ? `\nIn dieser Runde arbeitest du als Spezialist „${data.agent.name}“.` : ''));
     args.push('--allowedTools', ...CLAUDE_FULL_ALLOWED_TOOLS, ...CLAUDE_STUDIO_READ_TOOLS);
     // Spezialisten ohne Schreibrecht (z. B. Prüfer in der Team-Runde) dürfen nichts ändern
     if (data.agent && data.agent.write !== true) args.push('--disallowedTools', 'Edit', 'Write', 'NotebookEdit');
@@ -2074,7 +2088,7 @@ async function runLearningRound(data) {
 // ===== Worky verbessert sich selbst (Paket 5) =====
 // Verbesserungs-Runde: liest 👎 und abgebrochene Läufe und schlägt Regeln, Fähigkeiten (Skills) oder App-Verbesserungen
 // vor. App-Verbesserungen baut Worky nur in der Testkopie (testkopie.mjs), Timo probiert sie aus und entscheidet.
-const APP_SUMMARY = 'Projektliste und neue Projekte aus Vorlagen; Chat mit Worky (Schnell = nur lesen, Gründlich = Claude Code mit Skills, Spezialisten, Freigabe-Karten); Roblox Studio, Blender, Rojo, GitHub Desktop und Obsidian per Knopf; Aufgaben, Änderungen mit Rückgängig, Fehler-Wächter, Prompt-Ersteller, Seite „Worky lernt“ mit Daumen und Vorschlägen; Prüfung nach jeder Änderung (Hook), Roblox-Doku lokal, Lune-Rechentests, Browser-Spiel- und Godot-Selbsttest, Sicherung, Projekt-Status auf den Karten, eigene Vorlagen, Tastenkürzel, Update-Hinweis, Tages-Runde.';
+const APP_SUMMARY = 'Projektliste und neue Projekte aus Vorlagen; Chat mit Worky (Schnell = nur lesen, Gründlich = Claude Code mit Skills, Spezialisten, Freigabe-Karten); Roblox Studio, Blender, Rojo, GitHub Desktop und Obsidian per Knopf; Aufgaben, Änderungen mit Rückgängig, Fehler-Wächter, Prompt-Ersteller, Seite „Worky lernt“ mit Daumen und Vorschlägen; Prüfung nach jeder Änderung (Hook), Roblox-Doku lokal, Lune-Rechentests, Browser-Spiel- und Godot-Selbsttest, Sicherung, Projekt-Status auf den Karten, eigene Vorlagen, Tastenkürzel, Update-Hinweis, Tages-Runde; Nacht-Schicht (Aufgabenliste, nachts in eigener Arbeitskopie, morgens Pull Request) und Material-Ordner (material/ mit Vorschau und Beschreibungen).';
 let improving = false;
 async function runImproveRound() {
   if (improving) throw Object.assign(new Error('Worky denkt gerade schon nach.'), { status: 409 });
@@ -2187,7 +2201,7 @@ async function handleBackup(request, response, pathname, url) {
       return sendJson(response, 200, { done: true, name });
     }
     if (pathname === '/api/sicherung/einspielen') {
-      if (activeRuns > 0) return sendJson(response, 409, { error: 'Worky arbeitet gerade. Warte, bis er fertig ist, dann einspielen.' });
+      if (activeRuns > 0 || nightShift.running()) return sendJson(response, 409, { error: 'Worky arbeitet gerade (Chat oder Nacht-Schicht). Warte, bis er fertig ist, dann einspielen.' });
       const backup = data.name ? await backups.read(data.name) : data.backup;
       const result = await backups.restore(backup, data.browser);
       reloadAfterRestore();
@@ -2236,8 +2250,79 @@ async function handleTools(request, response, pathname, url) {
   return sendJson(response, 404, { error: 'Unbekannte Werkzeug-Anfrage.' });
 }
 
+// ===== Nacht-Schicht (Ausbau 2026-10-22): Aufgaben nachts allein abarbeiten, siehe nachtschicht.mjs =====
+const nightShift = createNightShift({
+  dataDir: DATA_DIR, gitCommand: GIT_COMMAND, ghCommand: GH_COMMAND, isBusy: () => activeRuns > 0,
+  projects: () => projectStore.projects, hookSettings: prepareHookSettings, docsFolder: () => (tools.docsReady() ? tools.docsFolder() : ''),
+  runClaude: (args, input, timeoutMs, cwd, signal) => runClaude(args, input, timeoutMs, null, signal, cwd, false),
+  // Zusatz für jede Aufgabe: Material aus der Arbeitskopie und das Wissen aus allen Projekten
+  context: async (project, folder) => {
+    const list = await material.summary(folder).catch(() => '');
+    const shared = learning.sharedKnowledge(1500);
+    return [
+      ...(list ? ['MATERIAL VON TIMO (Ordner material/):', list] : []),
+      ...(shared ? ['WISSEN AUS ALLEN PROJEKTEN (nur als Kontext):', shared] : [])
+    ].join('\n');
+  }
+});
+
+async function handleNightShift(request, response, pathname, url) {
+  if (request.method === 'GET' && pathname === '/api/nachtschicht') return sendJson(response, 200, nightShift.overview(url.searchParams.get('projekt') || ''));
+  if (request.method !== 'POST') return sendJson(response, 405, { error: 'Diese Anfrage ist nicht erlaubt.' });
+  if (request.headers.origin !== `http://${HOST}:${PORT}`) return sendJson(response, 403, { error: 'Die Nacht-Schicht geht nur über die Workflow-Seite.' });
+  let data;
+  try { data = await readJson(request); } catch (error) { return sendJson(response, 400, { error: error.message }); }
+  try {
+    if (pathname === '/api/nachtschicht/aufgabe') {
+      const project = projectStore.projects.find((item) => item.id === (data.projekt || PROJECT?.id));
+      if (!project) return sendJson(response, 404, { error: 'Wähle zuerst ein Projekt.' });
+      nightShift.addTask(project, data.text);
+    } else if (pathname === '/api/nachtschicht/entfernen') nightShift.removeTask(String(data.id || ''));
+    else if (pathname === '/api/nachtschicht/verschieben') nightShift.moveTask(String(data.id || ''), data.richtung);
+    else if (pathname === '/api/nachtschicht/einstellungen') nightShift.setSettings({ enabled: data.an, start: data.start });
+    else if (pathname === '/api/nachtschicht/gelesen') nightShift.markSeen();
+    else if (pathname === '/api/nachtschicht/starten') await nightShift.start('hand');
+    else if (pathname === '/api/nachtschicht/stoppen') nightShift.stop();
+    else return sendJson(response, 404, { error: 'Unbekannte Nacht-Schicht-Anfrage.' });
+    return sendJson(response, 200, nightShift.overview(data.projekt || PROJECT?.id || ''));
+  } catch (error) {
+    return sendJson(response, error.status || 500, { error: error.message || 'Das hat nicht geklappt.' });
+  }
+}
+
+// ===== Material-Ordner (Ausbau 2026-10-22), siehe material.mjs =====
+async function handleMaterial(request, response, pathname, url) {
+  try {
+    if (request.method === 'GET' && pathname === '/api/material') return sendJson(response, 200, await material.list(PROJECT_ROOT));
+    if (request.method === 'GET' && pathname === '/api/material/vorschau') {
+      const file = await material.preview(PROJECT_ROOT, url.searchParams.get('datei'));
+      response.writeHead(200, { 'Content-Type': file.type, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "sandbox; default-src 'none'" });
+      return response.end(file.body);
+    }
+    if (request.method !== 'POST') return sendJson(response, 405, { error: 'Diese Anfrage ist nicht erlaubt.' });
+    if (request.headers.origin !== `http://${HOST}:${PORT}`) return sendJson(response, 403, { error: 'Material geht nur über die Workflow-Seite.' });
+    if (pathname === '/api/material/hochladen') {
+      let name = '';
+      try { name = decodeURIComponent(String(request.headers['x-datei-name'] || '')); } catch { name = ''; }
+      return sendJson(response, 200, await material.save(PROJECT_ROOT, name, request));
+    }
+    const data = await readJson(request);
+    if (pathname === '/api/material/notiz') return sendJson(response, 200, await material.setNote(PROJECT_ROOT, data.datei, data.notiz));
+    if (pathname === '/api/material/ordner') {
+      const folder = material.folderOf(PROJECT_ROOT);
+      await mkdir(folder, { recursive: true });
+      if (process.platform !== 'win32') return sendJson(response, 200, { folder, opened: false });
+      await launchDetached('explorer.exe', [folder]);
+      return sendJson(response, 200, { folder, opened: true });
+    }
+  } catch (error) {
+    return sendJson(response, error.status || 500, { error: error.message || 'Das hat nicht geklappt.' });
+  }
+  return sendJson(response, 404, { error: 'Unbekannte Material-Anfrage.' });
+}
+
 const testCopy = createTestCopy({
-  appDir: HERE, dataDir: DATA_DIR, gitCommand: GIT_COMMAND, askClaude: askClaudeJson, isBusy: () => activeRuns > 0,
+  appDir: HERE, dataDir: DATA_DIR, gitCommand: GIT_COMMAND, askClaude: askClaudeJson, isBusy: () => activeRuns > 0 || nightShift.running(),
   runClaude: (args, input, timeoutMs, cwd) => runClaude(args, input, timeoutMs, null, undefined, cwd, false)
 });
 
@@ -2351,7 +2436,8 @@ async function serveMockup(request, response, pathname) {
 // Zugriff auf Workflow (eigener „Ursprung“), damit Spielcode keine Workflow-Anfragen schicken kann
 const GAME_TYPES = new Map([...mimeTypes, ['.json', 'application/json; charset=utf-8'], ['.jpg', 'image/jpeg'], ['.jpeg', 'image/jpeg'],
   ['.gif', 'image/gif'], ['.webp', 'image/webp'], ['.mp3', 'audio/mpeg'], ['.ogg', 'audio/ogg'], ['.wav', 'audio/wav'],
-  ['.woff2', 'font/woff2'], ['.mjs', 'text/javascript; charset=utf-8'], ['.txt', 'text/plain; charset=utf-8']]);
+  ['.woff2', 'font/woff2'], ['.mjs', 'text/javascript; charset=utf-8'], ['.txt', 'text/plain; charset=utf-8'],
+  ['.glb', 'model/gltf-binary'], ['.gltf', 'model/gltf+json'], ['.m4a', 'audio/mp4']]);
 async function serveGame(request, response, pathname) {
   if (!PROJECT || PROJECT.kind !== 'web') return sendJson(response, 404, { error: 'Die Vorschau gibt es nur für Browser-Spiele.' });
   let relative;
@@ -2391,11 +2477,13 @@ const server = createServer(async (request, response) => {
   if (pathname === '/api/sicherung' || pathname.startsWith('/api/sicherung/')) return handleBackup(request, response, pathname, requestUrl);
   if (request.method === 'GET' && pathname === '/api/workflow/version') return sendJson(response, 200, await workflowVersion(requestUrl.searchParams.get('frisch') === '1'));
   if (pathname === '/api/werkzeuge' || pathname.startsWith('/api/werkzeuge/')) return handleTools(request, response, pathname, requestUrl);
+  if (pathname === '/api/nachtschicht' || pathname.startsWith('/api/nachtschicht/')) return handleNightShift(request, response, pathname, requestUrl);
   // Ohne gewähltes Projekt weiß keine KI, wo sie arbeiten soll
   if (!PROJECT && pathname.startsWith('/api/') && !pathname.endsWith('/status') && pathname !== '/api/agents' && pathname !== '/api/approvals') {
     return sendJson(response, 409, { error: 'Wähle zuerst oben ein Projekt aus (oder füge eins hinzu).' });
   }
   if (request.method === 'GET' && pathname.startsWith('/entwuerfe/')) return serveMockup(request, response, pathname);
+  if (pathname === '/api/material' || pathname.startsWith('/api/material/')) return handleMaterial(request, response, pathname, requestUrl);
   if (request.method === 'GET' && (pathname === '/spiel' || pathname.startsWith('/spiel/'))) {
     if (pathname === '/spiel') { response.writeHead(302, { Location: '/spiel/' }); return response.end(); }
     return serveGame(request, response, pathname);
