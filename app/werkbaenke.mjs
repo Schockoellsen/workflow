@@ -87,7 +87,7 @@ export function createWorkbenches({ dataDir, gitCommand, ghCommand, runClaude, p
     const live = running.get(bench.id)?.live;
     return {
       id: bench.id, name: bench.name, project: bench.project, projectName: bench.projectName, folder: bench.folder, branch: bench.branch,
-      status: bench.status, message: bench.message || '', prUrl: bench.prUrl || '', createdAt: bench.createdAt, pushedAt: bench.pushedAt || '',
+      status: bench.status, message: bench.message || '', prUrl: bench.prUrl || '', createdAt: bench.createdAt, pushedAt: bench.pushedAt || '', dirty: bench.dirty === true,
       messages: bench.messages.slice(-KEEP_MESSAGES), live: live ? { text: live.text.slice(-MAX_LIVE_TEXT), tool: live.tool } : null
     };
   }
@@ -212,6 +212,8 @@ export function createWorkbenches({ dataDir, gitCommand, ghCommand, runClaude, p
       bench.status = 'bereit';
     }
     bench.messages = bench.messages.slice(-KEEP_MESSAGES);
+    // Merken, ob es Änderungen gibt, die noch in keinem Pull Request sind (für die Knöpfe)
+    if (existsSync(bench.folder)) bench.dirty = bench.dirty === true || (await changedFiles(bench.folder)).length > 0;
     save();
   }
 
@@ -220,11 +222,11 @@ export function createWorkbenches({ dataDir, gitCommand, ghCommand, runClaude, p
     return [
       `Du bist Worky aus der App Workflow und arbeitest an der Werkbank „${bench.name}“ im Projekt „${project.name}“. Eine Werkbank ist eine eigene Kopie des Projekts (eigener Ordner). Bis zu zwei andere Werkbänke arbeiten gleichzeitig in ihren eigenen Kopien an anderen Themen. Timos Projektordner ist nicht dieser Ordner.`,
       'Antworte auf Deutsch, locker und einfach (Timo ist Anfänger). Lies zuerst CLAUDE.md und halte dich an die Regeln dort. Ändere nur, was dein Thema braucht, und bewahre bestehende Spiellogik. Gemeinsame Übersichtsdateien (z. B. Code-Karte, Fahrplan, Testpaket in docs/) nur knapp ergänzen, nicht umbauen: Die anderen Werkbänke ändern sie vielleicht auch, sonst gibt es beim Mergen Konflikte.',
-      'Erlaubt sind: Dateien lesen und ändern, Spezialisten und Skills des Projekts, die Prüfungen des Projekts (z. B. sh tools/check_all.sh, lune run …, node --check …) und git status/diff/log. Andere Befehle fragen Timo über eine Freigabe-Karte. Kein git commit, push, switch oder reset: Wenn Timo „Fertig“ drückt, committet Workflow, lädt den Zweig hoch und macht einen Pull Request.',
+      'Erlaubt sind: Dateien lesen und ändern, Spezialisten und Skills des Projekts, die Prüfungen des Projekts (z. B. sh tools/check_all.sh, lune run …, node --check …) und git status/diff/log. Andere Befehle fragen Timo über eine Freigabe-Karte. Kein git commit, push, switch oder reset: Wenn Timo „⬆ Hochladen“ oder „✔ Fertig“ drückt, committet Workflow, lädt den Zweig hoch und macht einen Pull Request.',
       roblox ? 'Kein Roblox Studio und kein Blender an der Werkbank: Studio zeigt Timos Projektordner, nicht diese Kopie. Teste mit den Prüf-Skripten und Lune-Tests. Was Timo in Studio prüfen soll, schreibst du ihm Klick für Klick auf; er testet den Pull Request.' : 'Keine Programme mit Fenster.',
       'Nach jeder Änderung prüft Workflow die Datei automatisch (Syntax). Meldet die Prüfung einen Fehler, behebe ihn sofort.',
       'Sparsam arbeiten: große Notizen in docs/ erst mit Grep durchsuchen, nur passende Abschnitte lesen, lange Ausgaben begrenzen.',
-      'Antworte zum Schluss kurz: was du geändert hast (Dateien), was getestet ist, was Timo in Studio testen soll, offene Fragen. Ist das Thema fertig, sag Timo, dass er „Fertig“ drücken kann.'
+      'Antworte zum Schluss kurz: was du geändert hast (Dateien), was getestet ist, was Timo in Studio testen soll, offene Fragen. Ist das Thema fertig, sag Timo, dass er „✔ Fertig“ drücken kann (zwischendurch in Studio testen geht mit „⬆ Hochladen“).'
     ].join('\n');
   }
 
@@ -260,6 +262,7 @@ export function createWorkbenches({ dataDir, gitCommand, ghCommand, runClaude, p
       const pushed = await git(bench.folder, ['push', 'origin', `HEAD:refs/heads/${bench.branch}`], 180_000);
       if (!pushed.ok) throw new Error(`Hochladen zu GitHub ging nicht: ${pushed.output.split(/\r?\n/).slice(-2).join(' ').slice(0, 300)}`);
       bench.pushedAt = new Date().toISOString();
+      bench.dirty = false;
       if (!bench.prUrl) await createPullRequest(bench);
       bench.message = bench.prUrl ? '' : bench.message;
     } finally {

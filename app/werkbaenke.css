@@ -1,23 +1,70 @@
-/* Werkbänke (Ausbau 2026-10-23): bis zu drei Aufträge gleichzeitig, je Werkbank eine Karte mit eigenem Chat */
-.wbk-bench-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
-.wbk-bench-head a{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--ls-accent-hi)}
-.wbk-state{font-size:12px;font-weight:600;color:var(--ls-muted)}
-.wbk-state.wbk-arbeitet,.wbk-state.wbk-laedt{color:var(--ls-accent-hi)}
-.wbk-bench > .wz-hint{margin:0;overflow-wrap:anywhere}
-.wbk-log{display:grid;gap:6px;max-height:420px;overflow:auto;padding-right:2px}
-.wbk-older summary{cursor:pointer;font-size:12px;color:var(--ls-muted)}
-.wbk-older{display:grid;gap:6px}
-.wbk-msg{display:grid;gap:2px;padding:8px 10px;border-radius:10px;border:1px solid var(--ls-line);background:var(--ls-panel-2)}
-.wbk-msg small{font-size:11px;font-weight:700;color:var(--ls-muted)}
-.wbk-msg.wbk-timo{background:var(--ls-well)}
-.wbk-msg.wbk-fehler{border-color:#b5615c}
-.wbk-msg.wbk-live{background:var(--ls-mint-soft)}
-.wbk-text{font-size:13px;line-height:1.5;color:var(--ls-text);white-space:pre-wrap;overflow-wrap:anywhere}
-.wbk-worky .wbk-text{white-space:normal}
-.wbk-text p{margin:0 0 6px}
-.wbk-text pre{white-space:pre-wrap;overflow-wrap:anywhere}
-.wbk-bench .ns-add textarea:disabled{opacity:.6}
-.wbk-bench .wz-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.wbk-bench .outline-button{min-height:34px;padding:0 12px;border-radius:10px;font-size:12.5px}
-.ns-add input{width:100%;box-sizing:border-box;min-height:36px;padding:0 12px;border-radius:10px;border:1px solid var(--ls-line-2);background:var(--ls-well);color:var(--ls-text);font:inherit;font-size:13.5px}
-#werkbaenke{grid-template-columns:minmax(0,1fr);align-items:start}
+/* Werkbänke (Ausbau 2026-10-23): Worky 2, 3, 4 als Reiter oben im Worky-Chat. Gleicher Look wie Worky,
+   jeder in eigener Farbe (Mint, Violett, Rosé). Präfix wbk-, weil .wb-bench schon der Haupt-Chat ist. */
+
+/* Farben der weiteren Workys: gleiche Figur, anderer Verlauf */
+.worky-logo.wk-mint{background:radial-gradient(120% 120% at 30% 15%,#7ff0dc 0%,#22c3ae 42%,#0f9a8c 70%,#5b5fd6 100%);box-shadow:0 .08em .2em #0f9a8c40,0 0 0 .02em #ffffff70 inset,0 -.06em .12em #00000026 inset}
+.worky-logo.wk-violet{background:radial-gradient(120% 120% at 30% 15%,#d6b6ff 0%,#9a6bf0 40%,#7346d6 68%,#e05fa8 100%);box-shadow:0 .08em .2em #7346d640,0 0 0 .02em #ffffff70 inset,0 -.06em .12em #00000026 inset}
+.worky-logo.wk-rose{background:radial-gradient(120% 120% at 30% 15%,#ffc2d6 0%,#f06f9c 42%,#d2447b 70%,#8155d9 100%);box-shadow:0 .08em .2em #d2447b40,0 0 0 .02em #ffffff70 inset,0 -.06em .12em #00000026 inset}
+
+/* Reiter */
+.wbk-tabs{display:flex;gap:6px;align-items:stretch;padding:10px 24px 0;border-bottom:1px solid var(--ls-line);overflow-x:auto;scrollbar-width:thin}
+.wbk-tabs[hidden]{display:none}
+.wbk-tab{position:relative;display:flex;align-items:center;gap:9px;min-height:46px;padding:6px 14px 8px 10px;border:1px solid transparent;border-bottom:0;border-radius:14px 14px 0 0;background:transparent;color:var(--ls-muted);font:inherit;cursor:pointer;flex:0 0 auto;margin-bottom:-1px;transition:background .16s,color .16s}
+.wbk-tab:hover{background:var(--ls-raised,var(--ls-panel-2));color:var(--ls-text)}
+.wbk-tab.active{background:var(--ls-panel);border-color:var(--ls-line);color:var(--ls-text)}
+.wbk-tab.active::after{content:'';position:absolute;left:12px;right:12px;top:0;height:3px;border-radius:0 0 3px 3px;background:var(--ls-grad)}
+.wbk-tab:focus-visible{outline:2px solid var(--ls-accent);outline-offset:-2px}
+.wbk-tab .worky-logo.small{--wk-size:26px;animation:none}
+.wbk-tab-text{display:grid;text-align:left;line-height:1.2}
+.wbk-tab-text strong{font:700 13.5px var(--ls-display,inherit)}
+.wbk-tab-text small{font-size:11.5px;color:var(--ls-muted);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wbk-add{color:var(--ls-accent-hi)}
+.wbk-add .wbk-tab-text{font-weight:600;font-size:13px}
+.wbk-plus{display:grid;place-items:center;width:26px;height:26px;border-radius:38%;border:1.5px dashed currentColor;font-size:15px;line-height:1}
+.wbk-dot{width:8px;height:8px;border-radius:50%;flex:0 0 8px;margin-left:2px}
+.wbk-dot.busy{background:var(--ls-accent);animation:wbk-pulse 1.2s ease-in-out infinite}
+.wbk-dot.new{background:var(--ls-mint,#14b3a5)}
+.wbk-dot.pr{background:var(--ls-ok,#119e6a)}
+@keyframes wbk-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
+
+/* Ist ein weiterer Worky gewählt, wird der Haupt-Chat ausgeblendet (bleibt aber im Hintergrund am Laufen) */
+.claude-chat-panel.wbk-on > :not(.wbk-tabs):not(.wbk-pane){display:none !important}
+.wbk-pane{flex:1;display:flex;flex-direction:column;min-height:0}
+.wbk-pane[hidden]{display:none}
+.wbk-bench{flex:1;display:flex;flex-direction:column;min-height:0}
+.wf-app .wbk-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 24px 12px;border-bottom:1px solid var(--ls-line)}
+.wbk-head .wb-chat-identity{display:flex;align-items:center;gap:13px;min-width:0}
+.wbk-head h3{margin:0;font:700 17px var(--ls-display,inherit);color:var(--ls-text)}
+.wbk-status{margin:2px 0 0;font-size:12.5px;color:var(--ls-muted);overflow-wrap:anywhere}
+.wbk-head-tools{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.wbk-pr{display:inline-flex;align-items:center;min-height:34px;padding:0 12px;border-radius:10px;font-size:12.5px;font-weight:600;text-decoration:none}
+.wbk-trash{min-height:34px;padding:0 10px;border-radius:10px}
+.wbk-bench .chat-messages{flex:1;min-height:0;max-height:none}
+.wbk-live-tool{margin-left:6px;font-size:12px;font-weight:500;color:var(--ls-muted)}
+.wbk-bench.wk-mint .chat-message.worky::before{background:linear-gradient(180deg,#22c3ae,#0f9a8c)}
+.wbk-bench.wk-violet .chat-message.worky::before{background:linear-gradient(180deg,#9a6bf0,#e05fa8)}
+.wbk-bench.wk-rose .chat-message.worky::before{background:linear-gradient(180deg,#f06f9c,#8155d9)}
+.wbk-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;flex:0 0 auto}
+.wbk-actions .tiny-action{min-height:38px;padding:0 13px;border-radius:12px;font-size:13px;font-weight:600}
+.wbk-done{border-color:var(--ls-ok,#119e6a);color:var(--ls-ok,#119e6a)}
+.wbk-bench .chat-compose-footer{align-items:center}
+
+/* Neuer Worky */
+.wbk-new{flex:1;overflow:auto;display:flex;flex-direction:column;gap:14px;padding:26px max(24px,calc((100% - 760px)/2))}
+.wbk-welcome{margin:12px auto 0}
+.wf-app .wbk-new .chat-compose{display:grid;gap:8px;padding:18px 20px}
+.wbk-new label{font-size:13px;font-weight:600;color:var(--ls-text)}
+.wbk-new input{min-height:42px;padding:0 14px;border-radius:12px;border:1px solid var(--ls-line-2);background:var(--ls-well);color:var(--ls-text);font:inherit;font-size:14px}
+.wbk-new input:focus{outline:none;border-color:var(--ls-accent);box-shadow:0 0 0 3px #5b5fd61f}
+.wbk-new textarea{min-height:96px}
+.wbk-new .chat-compose-footer{gap:14px}
+
+@media (max-width:760px){
+  .wbk-tabs{padding:8px 12px 0}
+  .wbk-tab-text small{display:none}
+  .wf-app .wbk-head{padding:12px 14px}
+  .wbk-bench .chat-compose-footer{flex-wrap:wrap}
+  .wbk-actions{justify-content:flex-start}
+}
+@media (prefers-reduced-motion:reduce){.wbk-dot.busy{animation:none}}
+.wf-app .wbk-new textarea{border:1px solid var(--ls-line-2);border-radius:12px;background:var(--ls-well);padding:12px 14px}
