@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createConnection } from 'node:net';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
@@ -565,22 +565,47 @@ async function openObsidianVault() {
   return path.basename(DOCS_ROOT);
 }
 
+// Unter Windows startet Claude über claude.cmd (cmd.exe). child.kill() beendet nur cmd.exe, Claude selbst lief
+// weiter (Stopp tat nichts, nach dem Schließen von Workflow liefen alle Workys unsichtbar weiter und der PC hing).
+// Darum immer den ganzen Prozessbaum beenden und laufende Claude-Prozesse merken.
+const liveChildren = new Set();
+function killTree(child) {
+  if (!child?.pid || child.exitCode !== null) return;
+  if (process.platform === 'win32') {
+    try { spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore', timeout: 10_000 }); } catch { /* weiter mit kill */ }
+  }
+  try { child.kill(); } catch { /* schon beendet */ }
+}
+function killAllChildren() {
+  for (const child of liveChildren) killTree(child);
+  liveChildren.clear();
+}
+// Fenster zu (SIGHUP unter Windows), Strg+C oder Beenden: keine Workys zurücklassen
+for (const signalName of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK']) {
+  try { process.on(signalName, () => { killAllChildren(); process.exit(0); }); } catch { /* Signal gibt es hier nicht */ }
+}
+process.on('exit', killAllChildren);
+
 // onLine (optional): bekommt jede fertige Ausgabezeile sofort (für Live-Text im Chat)
 // cwd: sonst das gewählte Projekt (die Testkopie baut in ihrem eigenen Ordner); track = Projektwechsel solange sperren
 function runClaude(args, input = '', timeoutMs = 120_000, onLine = null, signal = undefined, cwd = PROJECT_ROOT, track = true) {
   const run = new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(new Error('Abgebrochen.'));
     const child = spawn(CLAUDE_COMMAND, args, {
-      signal,
       cwd,
       env: tools.pathEnv(),
       shell: process.platform === 'win32' && CLAUDE_COMMAND.toLowerCase().endsWith('.cmd'),
       windowsHide: true,
       stdio: ['pipe', 'pipe', 'pipe']
     });
+    liveChildren.add(child);
+    const onAbort = () => { killTree(child); reject(new Error('Abgebrochen.')); };
+    signal?.addEventListener('abort', onAbort, { once: true });
+    const forget = () => { liveChildren.delete(child); signal?.removeEventListener('abort', onAbort); };
     let stdout = '';
     let stderr = '';
     const timer = setTimeout(() => {
-      child.kill();
+      killTree(child);
       reject(new Error('Zeitgrenze erreicht, der Auftrag lief zu lange. Was bis dahin geändert wurde, bleibt. Schreib einfach „mach weiter“, dann arbeitet Worky an der Stelle weiter.'));
     }, timeoutMs);
 
@@ -607,10 +632,12 @@ function runClaude(args, input = '', timeoutMs = 120_000, onLine = null, signal 
     child.stderr.on('data', (chunk) => { stderr = (stderr + chunk).slice(-8000); });
     child.on('error', (error) => {
       clearTimeout(timer);
+      forget();
       reject(error);
     });
     child.on('close', (code) => {
       clearTimeout(timer);
+      forget();
       takeLine(pending);
       pending = '';
       stdout = kept.join('\n');

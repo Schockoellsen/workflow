@@ -1,4 +1,4 @@
-// Werkbänke (Ausbau 2026-10-23): Neben Worky arbeiten bis zu drei weitere Workys (Worky 2, 3, 4) gleichzeitig an
+// Werkbänke (Ausbau 2026-10-23): Neben Worky arbeiten bis zu zwei weitere Workys (Worky 2 und 3) gleichzeitig an
 // anderen Themen, jeder in einer eigenen Kopie des Projekts. Sie sitzen als Reiter oben im Worky-Chat und sehen aus
 // wie Worky, nur in eigener Farbe. Die Arbeit macht der Server (werkbaenke.mjs); hier nur Reiter, Chat und Knöpfe.
 // Gezeichnet wird nur, was sich geändert hat, damit beim Lesen und Scrollen nichts springt.
@@ -47,7 +47,7 @@
   pane.hidden = true;
   panel.append(pane);
 
-  let data = { available: true, max: 3, benches: [] };
+  let data = { available: true, max: 2, benches: [] };
   let active = 'worky'; // 'worky', 'neu' oder die ID einer Werkbank
   const views = new Map(); // ID → { root, messages, key, live, input, footer, head }
   const seen = new Map(); // ID → Anzahl gesehener Nachrichten (für den Punkt am Reiter)

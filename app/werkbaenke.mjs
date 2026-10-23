@@ -1,4 +1,4 @@
-// Werkbänke (Ausbau 2026-10-23): Bis zu drei Worky-Aufträge laufen gleichzeitig, ohne sich in die Quere zu kommen.
+// Werkbänke (Ausbau 2026-10-23): Bis zu zwei Worky-Aufträge (neben dem Haupt-Worky) laufen gleichzeitig, ohne sich in die Quere zu kommen.
 // Jede Werkbank ist eine eigene Kopie des Projekts neben Timos Ordner (git worktree „<projekt>-werkbank-<name>“) mit
 // eigenem Chat. Timos Projektordner bleibt unberührt. „Fertig“ committet, lädt den Zweig claude/werkbank-<name> hoch
 // und legt einen Pull Request an; testen und mergen macht Timo wie gewohnt.
@@ -11,7 +11,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 
-const MAX_BENCHES = 3; // je Projekt
+const MAX_BENCHES = 2; // je Projekt, dazu der Haupt-Worky: mehr als 3 Claude-Läufe gleichzeitig machten Timos PC zu langsam
 const RUN_TIMEOUT_MS = 90 * 60_000;
 const KEEP_MESSAGES = 40;
 const MAX_LIVE_TEXT = 12_000;
@@ -247,7 +247,7 @@ export function createWorkbenches({ dataDir, gitCommand, ghCommand, runClaude, p
   function benchRules(project, bench) {
     const roblox = project.kind === 'roblox';
     return [
-      `Du bist Worky aus der App Workflow und arbeitest an der Werkbank „${bench.name}“ im Projekt „${project.name}“. Eine Werkbank ist eine eigene Kopie des Projekts (eigener Ordner). Bis zu zwei andere Werkbänke arbeiten gleichzeitig in ihren eigenen Kopien an anderen Themen. Timos Projektordner ist nicht dieser Ordner.`,
+      `Du bist Worky aus der App Workflow und arbeitest an der Werkbank „${bench.name}“ im Projekt „${project.name}“. Eine Werkbank ist eine eigene Kopie des Projekts (eigener Ordner). Der Haupt-Worky und höchstens eine andere Werkbank arbeiten gleichzeitig an anderen Themen. Timos Projektordner ist nicht dieser Ordner.`,
       'Antworte auf Deutsch, locker und einfach (Timo ist Anfänger). Lies zuerst CLAUDE.md und halte dich an die Regeln dort. Ändere nur, was dein Thema braucht, und bewahre bestehende Spiellogik. Gemeinsame Übersichtsdateien (z. B. Code-Karte, Fahrplan, Testpaket in docs/) nur knapp ergänzen, nicht umbauen: Die anderen Werkbänke ändern sie vielleicht auch, sonst gibt es beim Mergen Konflikte.',
       'Erlaubt sind: Dateien lesen und ändern, Spezialisten und Skills des Projekts, die Prüfungen des Projekts (z. B. sh tools/check_all.sh, lune run …, node --check …) und git status/diff/log. Andere Befehle fragen Timo über eine Freigabe-Karte. Kein git commit, push, switch oder reset: Wenn Timo „⬆ Hochladen“ oder „✔ Fertig“ drückt, committet Workflow, lädt den Zweig hoch und macht einen Pull Request.',
       roblox ? 'Kein Roblox Studio und kein Blender an der Werkbank: Studio zeigt Timos Projektordner, nicht diese Kopie. Teste mit den Prüf-Skripten und Lune-Tests. Was Timo in Studio prüfen soll, schreibst du ihm Klick für Klick auf; er testet den Pull Request.' : 'Keine Programme mit Fenster.',
