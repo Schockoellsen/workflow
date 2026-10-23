@@ -1,0 +1,23 @@
+/* Werkbänke (Ausbau 2026-10-23): bis zu drei Aufträge gleichzeitig, je Werkbank eine Karte mit eigenem Chat */
+.wbk-bench-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.wbk-bench-head a{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--ls-accent-hi)}
+.wbk-state{font-size:12px;font-weight:600;color:var(--ls-muted)}
+.wbk-state.wbk-arbeitet,.wbk-state.wbk-laedt{color:var(--ls-accent-hi)}
+.wbk-bench > .wz-hint{margin:0;overflow-wrap:anywhere}
+.wbk-log{display:grid;gap:6px;max-height:420px;overflow:auto;padding-right:2px}
+.wbk-older summary{cursor:pointer;font-size:12px;color:var(--ls-muted)}
+.wbk-older{display:grid;gap:6px}
+.wbk-msg{display:grid;gap:2px;padding:8px 10px;border-radius:10px;border:1px solid var(--ls-line);background:var(--ls-panel-2)}
+.wbk-msg small{font-size:11px;font-weight:700;color:var(--ls-muted)}
+.wbk-msg.wbk-timo{background:var(--ls-well)}
+.wbk-msg.wbk-fehler{border-color:#b5615c}
+.wbk-msg.wbk-live{background:var(--ls-mint-soft)}
+.wbk-text{font-size:13px;line-height:1.5;color:var(--ls-text);white-space:pre-wrap;overflow-wrap:anywhere}
+.wbk-worky .wbk-text{white-space:normal}
+.wbk-text p{margin:0 0 6px}
+.wbk-text pre{white-space:pre-wrap;overflow-wrap:anywhere}
+.wbk-bench .ns-add textarea:disabled{opacity:.6}
+.wbk-bench .wz-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.wbk-bench .outline-button{min-height:34px;padding:0 12px;border-radius:10px;font-size:12.5px}
+.ns-add input{width:100%;box-sizing:border-box;min-height:36px;padding:0 12px;border-radius:10px;border:1px solid var(--ls-line-2);background:var(--ls-well);color:var(--ls-text);font:inherit;font-size:13.5px}
+#werkbaenke{grid-template-columns:minmax(0,1fr);align-items:start}

@@ -16,6 +16,7 @@ import { createBackups } from './sicherung.mjs';
 import { createOwnTemplates } from './eigene-vorlagen.mjs';
 import { createMaterial } from './material.mjs';
 import { createNightShift } from './nachtschicht.mjs';
+import { createWorkbenches } from './werkbaenke.mjs';
 import { createStarterHelp } from './starthilfe.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -2331,6 +2332,60 @@ async function handleNightShift(request, response, pathname, url) {
   }
 }
 
+// ===== Werkbänke (Ausbau 2026-10-23): bis zu drei Worky-Aufträge gleichzeitig, siehe werkbaenke.mjs =====
+// Eigene MCP-Konfiguration je Werkbank: nur die Freigabe (Karte zeigt „Werkbank …“), kein Studio, kein Blender und
+// keine Werkstatt-Werkzeuge (die arbeiten im Projektordner, nicht in der Kopie). Liegt im Temp-Ordner (Freigabe-Token).
+async function prepareBenchMcpConfig(benchId, provider) {
+  const file = path.join(tmpdir(), `workflow-werkbank-${process.pid}-${benchId.slice(0, 8)}.json`);
+  const servers = {
+    werkstatt_freigabe: {
+      type: 'stdio', command: process.execPath, args: [APPROVAL_MCP_SCRIPT],
+      env: { IE_APPROVAL_TOKEN: APPROVAL_TOKEN, IE_WORKSHOP_URL: `http://${HOST}:${PORT}`, IE_APPROVAL_PROVIDER: provider.slice(0, 40) }
+    }
+  };
+  await writeFile(file, JSON.stringify({ mcpServers: servers }, null, 2), { encoding: 'utf8', mode: 0o600 });
+  return file;
+}
+
+const workbenches = createWorkbenches({
+  dataDir: DATA_DIR, gitCommand: GIT_COMMAND, ghCommand: GH_COMMAND,
+  projects: () => projectStore.projects, hookSettings: prepareHookSettings, docsFolder: () => (tools.docsReady() ? tools.docsFolder() : ''),
+  mcpConfig: prepareBenchMcpConfig, approvalTool: APPROVAL_TOOL,
+  runClaude: (args, input, timeoutMs, onLine, signal, cwd) => runClaude(args, input, timeoutMs, onLine, signal, cwd, true),
+  context: async (project, folder) => {
+    const list = await material.summary(folder).catch(() => '');
+    const shared = learning.sharedKnowledge(1500);
+    return [
+      ...(list ? ['MATERIAL VON TIMO (Ordner material/):', list] : []),
+      ...(shared ? ['WISSEN AUS ALLEN PROJEKTEN (nur als Kontext):', shared] : [])
+    ].join('\n');
+  }
+});
+
+async function handleWorkbenches(request, response, pathname, url) {
+  if (request.method === 'GET' && pathname === '/api/werkbaenke') return sendJson(response, 200, workbenches.overview(url.searchParams.get('projekt') || PROJECT?.id || ''));
+  if (request.method !== 'POST') return sendJson(response, 405, { error: 'Diese Anfrage ist nicht erlaubt.' });
+  if (request.headers.origin !== `http://${HOST}:${PORT}`) return sendJson(response, 403, { error: 'Werkbänke gehen nur über die Workflow-Seite.' });
+  let data;
+  try { data = await readJson(request); } catch (error) { return sendJson(response, 400, { error: error.message }); }
+  try {
+    const id = String(data.id || '');
+    if (pathname === '/api/werkbaenke/anlegen') {
+      const project = projectStore.projects.find((item) => item.id === (data.projekt || PROJECT?.id));
+      if (!project) return sendJson(response, 404, { error: 'Wähle zuerst ein Projekt.' });
+      const bench = await workbenches.create(project, data.name);
+      if (typeof data.auftrag === 'string' && data.auftrag.trim()) workbenches.send(bench.id, data.auftrag);
+    } else if (pathname === '/api/werkbaenke/senden') workbenches.send(id, data.text);
+    else if (pathname === '/api/werkbaenke/stoppen') workbenches.stop(id);
+    else if (pathname === '/api/werkbaenke/fertig') await workbenches.finish(id);
+    else if (pathname === '/api/werkbaenke/wegraeumen') await workbenches.remove(id, data.sicher === true);
+    else return sendJson(response, 404, { error: 'Unbekannte Werkbank-Anfrage.' });
+    return sendJson(response, 200, workbenches.overview(data.projekt || PROJECT?.id || ''));
+  } catch (error) {
+    return sendJson(response, error.status || 500, { error: error.message || 'Das hat nicht geklappt.' });
+  }
+}
+
 // ===== Ideen-Starthilfe (Ausbau 2026-10-23), siehe starthilfe.mjs =====
 function starterProject(project) {
   return { id: project.id, name: project.name, kind: project.kind, kindLabel: PROJECT_KINDS[project.kind] || 'Spiel', root: project.root };
@@ -2535,6 +2590,7 @@ const server = createServer(async (request, response) => {
   if (request.method === 'GET' && pathname === '/api/workflow/version') return sendJson(response, 200, await workflowVersion(requestUrl.searchParams.get('frisch') === '1'));
   if (pathname === '/api/werkzeuge' || pathname.startsWith('/api/werkzeuge/')) return handleTools(request, response, pathname, requestUrl);
   if (pathname === '/api/nachtschicht' || pathname.startsWith('/api/nachtschicht/')) return handleNightShift(request, response, pathname, requestUrl);
+  if (pathname === '/api/werkbaenke' || pathname.startsWith('/api/werkbaenke/')) return handleWorkbenches(request, response, pathname, requestUrl);
   // Ohne gewähltes Projekt weiß keine KI, wo sie arbeiten soll
   if (!PROJECT && pathname.startsWith('/api/') && !pathname.endsWith('/status') && pathname !== '/api/agents' && pathname !== '/api/approvals') {
     return sendJson(response, 409, { error: 'Wähle zuerst oben ein Projekt aus (oder füge eins hinzu).' });
