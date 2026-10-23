@@ -129,7 +129,10 @@
       if (!name.value.trim()) { name.focus(); say('Gib ihm einen kurzen Namen, z. B. „Höhle“.'); return; }
       if (!task.value.trim()) { task.focus(); say('Schreib ihm einen ersten Auftrag.'); return; }
       go.disabled = true;
-      hint.textContent = 'Workflow legt die Kopie deines Projekts an. Das kann bei großen Projekten eine Minute dauern …';
+      const started = Date.now();
+      const tick = () => { hint.textContent = `Workflow legt die Kopie deines Projekts an (${Math.round((Date.now() - started) / 1000)} s). Das kann bei großen Projekten ein, zwei Minuten dauern …`; };
+      tick();
+      const ticker = setInterval(tick, 1000);
       try {
         const before = new Set(data.benches.map((bench) => bench.id));
         data = await api('/api/werkbaenke/anlegen', { projekt: project?.id, name: name.value, auftrag: task.value });
@@ -137,6 +140,7 @@
         select(created ? created.id : 'worky');
         schedule();
       } catch (error) { hint.textContent = error.message; go.disabled = false; }
+      finally { clearInterval(ticker); }
     });
     box.append(intro, form);
     pane.replaceChildren(box);

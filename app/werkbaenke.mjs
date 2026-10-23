@@ -71,13 +71,21 @@ export function createWorkbenches({ dataDir, gitCommand, ghCommand, runClaude, p
     return new Promise((resolve) => {
       let output = '';
       let child;
-      try { child = spawn(command, args, { cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } }); } catch (error) { return resolve({ ok: false, output: error.message }); }
-      const timer = setTimeout(() => child.kill(), timeoutMs);
+      let done = false;
+      const finish = (result) => { if (!done) { done = true; clearTimeout(timer); resolve(result); } };
+      // GCM_INTERACTIVE=never: kein unsichtbares Anmelde-Fenster, auf das git ewig wartet
+      try { child = spawn(command, args, { cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never' } }); } catch (error) { return resolve({ ok: false, output: error.message }); }
+      // Zeit um: ganzen Prozessbaum beenden (unter Windows hält sonst git-remote-https die Ausgabe offen) und nicht weiter warten
+      const timer = setTimeout(() => {
+        if (process.platform === 'win32' && child.pid) spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' }).once('error', () => {});
+        else child.kill();
+        finish({ ok: false, output: `${output.trimEnd()}\nZeit abgelaufen nach ${Math.round(timeoutMs / 1000)} s`.trim(), timedOut: true });
+      }, timeoutMs);
       const add = (chunk) => { if (output.length < MAX_GIT_OUTPUT) output += chunk; };
       child.stdout.on('data', add);
       child.stderr.on('data', add);
-      child.once('error', (error) => { clearTimeout(timer); resolve({ ok: false, output: error.message, missing: error.code === 'ENOENT' }); });
-      child.once('close', (code) => { clearTimeout(timer); resolve({ ok: code === 0, output: output.trimEnd() }); });
+      child.once('error', (error) => finish({ ok: false, output: error.message, missing: error.code === 'ENOENT' }));
+      child.once('close', (code) => finish({ ok: code === 0, output: output.trimEnd() }));
     });
   }
   const git = (cwd, args, timeoutMs) => run(gitCommand, args, cwd, timeoutMs);
@@ -110,7 +118,7 @@ export function createWorkbenches({ dataDir, gitCommand, ghCommand, runClaude, p
     const root = path.resolve(project.root);
     if (!existsSync(path.join(root, '.git'))) throw fail('Der Projektordner ist kein Git-Ordner. Werkbänke brauchen Git (für die eigene Kopie und den Zweig).');
     // Vom neuesten Stand auf GitHub aus arbeiten, ohne Internet vom lokalen main
-    const fetched = await git(root, ['fetch', 'origin', 'main'], 90_000);
+    const fetched = await git(root, ['fetch', 'origin', 'main'], 45_000);
     let base = '';
     for (const candidate of [fetched.ok ? 'origin/main' : '', 'main', 'master', 'HEAD'].filter(Boolean)) {
       if ((await git(root, ['rev-parse', '--verify', '--quiet', `${candidate}^{commit}`])).ok) { base = candidate; break; }
@@ -118,7 +126,7 @@ export function createWorkbenches({ dataDir, gitCommand, ghCommand, runClaude, p
     if (!base) throw fail('Im Projekt gibt es noch keinen Commit, von dem die Werkbank ausgehen kann.');
     // Freien Ordner- und Zweignamen suchen (auch auf GitHub darf der Zweig noch nicht existieren)
     const slug = slugOf(name);
-    const remote = fetched.ok ? await git(root, ['ls-remote', '--heads', 'origin', `claude/werkbank-${slug}*`], 60_000) : { output: '' };
+    const remote = fetched.ok ? await git(root, ['ls-remote', '--heads', 'origin', `claude/werkbank-${slug}*`], 30_000) : { output: '' };
     const taken = (branch, folder) => existsSync(folder)
       || state.benches.some((bench) => bench.branch === branch || path.resolve(bench.folder) === path.resolve(folder))
       || remote.output.split(/\r?\n/).some((line) => line.endsWith(`refs/heads/${branch}`));
