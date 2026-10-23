@@ -61,6 +61,8 @@
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
+    // × und „Zurück“ schließen nur den Dialog (früher lief auch hier „Projekt anlegen“ los)
+    if (event.submitter?.value === 'cancel') { dialog.close(); return; }
     if (!nameInput.value.trim()) { nameInput.focus(); return; }
     createButton.disabled = true;
     say('Lege das Projekt an …');

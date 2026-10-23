@@ -57,7 +57,11 @@ const tools = createTools({ dataDir: DATA_DIR, gitCommand: GIT_COMMAND });
 const backups = createBackups({ dataDir: DATA_DIR, appDir: HERE });
 const material = createMaterial();
 // Ideen-Starthilfe (Ausbau 2026-10-23): Inspiration für neue Projekte, siehe starthilfe.mjs
-const starterHelp = createStarterHelp(DATA_DIR, (prompt) => askClaudeText(prompt, 'medium'));
+// Bei einem frisch angelegten Projekt wird die Notiz gleich committet, damit es nicht „1 Änderung nicht committet“ zeigt
+const starterHelp = createStarterHelp(DATA_DIR, (prompt) => askClaudeText(prompt, 'medium'), async (root, file) => {
+  if (!existsSync(path.join(root, '.git'))) return;
+  if ((await gitIn(root, ['add', '--', file])).ok) await gitIn(root, ['commit', '-m', 'Starthilfe von Worky', '--', file]);
+});
 const ownTemplates = createOwnTemplates({ dataDir: DATA_DIR, gitCommand: GIT_COMMAND, slug: (name, taken) => projectSlug(name, taken) });
 // Eigener Port, damit die alte IE Werkstatt (4173) während des Umzugs parallel laufen kann
 const PORT = Number(process.env.WORKFLOW_PORT || 4180);
@@ -1927,7 +1931,7 @@ async function createProject(data) {
   // Mit Beschreibung sammelt Worky gleich im Hintergrund Ideen (Starthilfe unter „Ideen“)
   let starthilfe = false;
   if (description && process.env.WORKFLOW_TESTKOPIE !== '1') {
-    try { starterHelp.start(starterProject(project), description); starthilfe = true; } catch (error) { console.error(`Starthilfe: ${error.message}`); }
+    try { starterHelp.start(starterProject(project), description, { commit: git === 'ok' }); starthilfe = true; } catch (error) { console.error(`Starthilfe: ${error.message}`); }
   }
   return { project, files, git, rojo, starthilfe };
 }
@@ -2055,6 +2059,35 @@ async function handleProjects(request, response, pathname) {
   if (pathname === '/api/projekte/vorlage-loeschen') {
     try { return sendJson(response, 200, { vorlagen: await ownTemplates.remove(data.id) }); }
     catch (error) { return sendJson(response, error.status || 500, { error: error.message }); }
+  }
+
+  // Projekt löschen (2026-10-23): Ordner in den Windows-Papierkorb (dort wiederherstellbar) und aus der Liste nehmen.
+  // Nur nach Eintippen des Namens, nie das offene Projekt und nie Workflow selbst.
+  if (pathname === '/api/projekte/loeschen') {
+    if (request.headers.origin !== `http://${HOST}:${PORT}`) return sendJson(response, 403, { error: 'Löschen geht nur über die Workflow-Seite.' });
+    const project = projectStore.projects.find((item) => item.id === data.id);
+    if (!project) return sendJson(response, 404, { error: 'Dieses Projekt gibt es nicht in der Liste.' });
+    if (project.id === PROJECT?.id) return sendJson(response, 409, { error: 'Das offene Projekt kann nicht gelöscht werden. Öffne erst ein anderes Projekt.' });
+    if (String(data.name || '').trim() !== project.name) return sendJson(response, 400, { error: 'Der eingetippte Name passt nicht, es wurde nichts gelöscht.' });
+    const folder = path.resolve(project.root);
+    const app = path.resolve(HERE, '..');
+    if (folder === app || folder.startsWith(app + path.sep) || app.startsWith(folder + path.sep) || path.parse(folder).root === folder) {
+      return sendJson(response, 400, { error: 'Dieser Ordner darf nicht gelöscht werden.' });
+    }
+    if (folderExists(folder)) {
+      if (process.platform !== 'win32') return sendJson(response, 501, { error: 'Löschen mit Papierkorb geht nur unter Windows.' });
+      const script = 'Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($env:WORKFLOW_LOESCHEN, [Microsoft.VisualBasic.FileIO.UIOption]::OnlyErrorDialogs, [Microsoft.VisualBasic.FileIO.RecycleOption]::SendToRecycleBin)';
+      // Pfad über eine Umgebungsvariable, damit Leerzeichen und Sonderzeichen im Pfad nichts kaputt machen
+      const result = await tools.run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { timeoutMs: 120_000, env: { ...process.env, WORKFLOW_LOESCHEN: folder } });
+      if (result.code !== 0 || folderExists(folder)) {
+        return sendJson(response, 500, { error: 'Der Ordner konnte nicht in den Papierkorb. Ist noch ein Programm darin offen (Studio, Explorer, GitHub Desktop)? Schließ es und probier es nochmal.' });
+      }
+    }
+    projectStore.projects = projectStore.projects.filter((item) => item.id !== project.id);
+    writeProjects(projectStore);
+    projectStatusCache.delete(project.id);
+    console.log(`Projekt gelöscht (Papierkorb): ${project.name} (${folder})`);
+    return sendJson(response, 200, { ...listing(), deleted: project.id, recycled: true });
   }
 
   if (pathname === '/api/projekte/entfernen') {

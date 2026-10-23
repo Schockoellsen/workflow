@@ -69,7 +69,8 @@ function toMarkdown(project, wish, result, date) {
   return lines.join('\n');
 }
 
-export function createStarterHelp(dataDir, ask) {
+// afterWrite(root, datei) wird nach dem Schreiben der Tresor-Notiz aufgerufen, wenn start(…, { commit: true }) war
+export function createStarterHelp(dataDir, ask, afterWrite = null) {
   const folder = path.join(dataDir, 'starthilfe');
   const running = new Map(); // Projekt-ID → Wunsch, solange Worky sammelt
   const fileOf = (id) => path.join(folder, `${String(id).replace(/[^a-z0-9-]/gi, '_')}.json`);
@@ -99,7 +100,7 @@ export function createStarterHelp(dataDir, ask) {
   }
 
   // Startet im Hintergrund; das Ergebnis holt die Seite mit get() ab
-  function start(project, wishValue) {
+  function start(project, wishValue, { commit = false } = {}) {
     const wish = clean(wishValue, MAX_WISH);
     if (!wish) throw Object.assign(new Error('Schreib kurz, worum es in deinem Spiel gehen soll.'), { status: 400 });
     if (running.has(project.id)) throw Object.assign(new Error('Worky sammelt gerade schon Ideen für dieses Projekt.'), { status: 409 });
@@ -117,6 +118,7 @@ export function createStarterHelp(dataDir, ask) {
             await mkdir(docs, { recursive: true });
             await writeFile(path.join(docs, 'Starthilfe.md'), toMarkdown(project, wish, result, entry.at.slice(0, 10)), 'utf8');
             entry.note = 'docs/Starthilfe.md';
+            if (commit && afterWrite) await afterWrite(project.root, entry.note);
           }
         } catch (error) { console.error(`Starthilfe in den Tresor: ${error.message}`); }
       } catch (error) {

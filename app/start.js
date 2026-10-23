@@ -167,7 +167,24 @@
         } catch (error) { alert(error.message); }
       });
       cards.push({ card, chips, body, item, text: `${item.name} ${item.kindLabel} ${item.description || ''}`.toLocaleLowerCase('de') });
-      grid.append(card);
+      // Löschen-Knopf in der Ecke (nicht beim offenen Projekt); Karte und Knopf liegen in einer Hülle
+      const wrap = el('div', 'ws-cardwrap');
+      wrap.append(card);
+      if (item.id !== data.active) {
+        const trash = el('button', 'ws-delete', '🗑');
+        trash.type = 'button';
+        trash.title = 'Projekt löschen (Ordner kommt in den Papierkorb)';
+        trash.setAttribute('aria-label', `„${item.name}“ löschen`);
+        trash.style.animationDelay = card.style.animationDelay;
+        trash.addEventListener('click', async () => {
+          try {
+            const result = await window.workflowDeleteProject?.(item);
+            if (result) showProjects(result);
+          } catch (error) { alert(error.message); }
+        });
+        wrap.append(trash);
+      }
+      grid.append(wrap);
     });
 
     const plusIcon = () => svg('<path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>', '0 0 24 24', 26, 26);
@@ -194,7 +211,7 @@
 
     input.addEventListener('input', () => {
       const query = input.value.trim().toLocaleLowerCase('de');
-      for (const { card, text } of cards) card.hidden = Boolean(query) && !text.includes(query);
+      for (const { card, text } of cards) card.parentElement.hidden = Boolean(query) && !text.includes(query);
     });
     (grid.querySelector('.ws-card:not(:disabled)') || add).focus({ preventScroll: true });
   }

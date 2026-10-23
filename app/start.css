@@ -83,3 +83,12 @@ html[data-theme="dark"] .ws-plus-soft{background:#23264a;color:#c4c6ff}
 @keyframes ws-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 @media (max-width:640px){.ws-head{padding:14px 16px}.ws-main{padding:32px 16px 48px}.ws-hello h1{font-size:30px}}
 @media (prefers-reduced-motion:reduce){.ws-layer *,.ws-layer{animation:none !important;transition:none !important}.ws-go{opacity:1;transform:none;pointer-events:auto}.ws-line{stroke-dasharray:none}}
+
+/* Projekt löschen (2026-10-23): Knopf oben rechts auf der Karte */
+.ws-cardwrap{position:relative;display:grid}
+.ws-cardwrap[hidden]{display:none}
+.ws-delete{position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:10px;border:1px solid #e6e8f0;background:#ffffffe6;font-size:16px;cursor:pointer;opacity:0;transition:opacity .15s,border-color .15s;animation:ws-in .5s cubic-bezier(.2,.8,.2,1) both}
+.ws-cardwrap:hover .ws-delete,.ws-delete:focus-visible{opacity:1}
+.ws-delete:hover{border-color:#d63c4a}
+@media (hover:none){.ws-delete{opacity:1}}
+html[data-theme="dark"] .ws-delete{background:#171a24e6;border-color:#252a39}

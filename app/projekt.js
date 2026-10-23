@@ -13,6 +13,21 @@
     return data;
   }
 
+  // Projekt löschen (2026-10-23): Name eintippen, dann kommt der Ordner in den Windows-Papierkorb.
+  // Gibt die neue Projektliste zurück, oder null, wenn Timo abbricht.
+  window.workflowDeleteProject = async (item) => {
+    let warning = '';
+    try {
+      const status = (await api('/api/projekte/status')).status?.[item.id];
+      if (status?.changes) warning += `\n⚠️ ${status.changes} Änderungen sind noch nicht committet.`;
+      if (status?.ahead) warning += `\n⚠️ ${status.ahead} Commits sind noch nicht auf GitHub hochgeladen.`;
+    } catch { /* ohne Status weiter */ }
+    const typed = prompt(`Projekt „${item.name}“ löschen?\n\nDer Ordner ${item.root} kommt in den Windows-Papierkorb. Dort kannst du ihn wiederherstellen, bis du den Papierkorb leerst.${warning}\n\nZum Bestätigen tippe den Namen ein: ${item.name}`);
+    if (typed === null) return null;
+    if (typed.trim() !== item.name) { alert('Der Name passt nicht, es wurde nichts gelöscht.'); return null; }
+    return api('/api/projekte/loeschen', { id: item.id, name: typed.trim() });
+  };
+
   function init() {
     document.title = project ? `${project.name} · Workflow` : 'Workflow';
     for (const element of document.querySelectorAll('[data-projekt-name]')) element.textContent = project ? project.name : 'Kein Projekt';
@@ -81,7 +96,19 @@
             if (!confirm(`„${item.name}“ aus der Liste nehmen? Der Ordner und alle Dateien bleiben auf deinem PC.`)) return;
             try { render(await api('/api/projekte/entfernen', { id: item.id })); say('Aus der Liste genommen.'); } catch (error) { say(error.message, true); }
           });
-          row.append(remove);
+          const trash = document.createElement('button');
+          trash.type = 'button';
+          trash.className = 'project-remove project-delete';
+          trash.textContent = '🗑';
+          trash.setAttribute('aria-label', `„${item.name}“ löschen`);
+          trash.title = 'Projekt löschen (Ordner kommt in den Papierkorb)';
+          trash.addEventListener('click', async () => {
+            try {
+              const result = await window.workflowDeleteProject(item);
+              if (result) { render(result); say(`„${item.name}“ ist gelöscht. Der Ordner liegt im Papierkorb.`); }
+            } catch (error) { say(error.message, true); }
+          });
+          row.append(remove, trash);
         }
         list.append(row);
       }
