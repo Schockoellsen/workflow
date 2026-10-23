@@ -61,6 +61,8 @@
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
+    // × und „Zurück“ schließen nur den Dialog (früher lief auch hier „Projekt anlegen“ los)
+    if (event.submitter?.value === 'cancel') { dialog.close(); return; }
     if (!nameInput.value.trim()) { nameInput.focus(); return; }
     createButton.disabled = true;
     say('Lege das Projekt an …');
@@ -71,7 +73,11 @@
       if (result.git === 'ohne-commit') notes.push('Git ist angelegt, aber der erste Commit fehlt noch. Mach ihn in GitHub Desktop (dort ggf. Name und E-Mail einrichten).');
       if (result.rojo === 'fehlt') notes.push('rojo.exe liegt noch nicht im neuen Ordner. Kopier sie aus deinem anderen Roblox-Projekt hinein, dann geht der Rojo-Knopf.');
       await post('/api/projekte/waehlen', { id: result.added });
-      try { sessionStorage.setItem('workflow-start-gesehen', '1'); } catch { /* privates Fenster */ }
+      try {
+        sessionStorage.setItem('workflow-start-gesehen', '1');
+        // Starthilfe läuft: nach dem Neuladen gleich den Ideen-Bereich zeigen (starthilfe.js)
+        if (result.starthilfe) sessionStorage.setItem('workflow-starthilfe-oeffnen', '1');
+      } catch { /* privates Fenster */ }
       if (notes.length) {
         say(`Fertig: ${result.folder}. ${notes.join(' ')} Klick „Öffnen“.`);
         createButton.disabled = false;
@@ -79,7 +85,7 @@
         form.onsubmit = (next) => { next.preventDefault(); location.reload(); };
         return;
       }
-      say(`Fertig: ${result.folder}`);
+      say(result.starthilfe ? `Fertig: ${result.folder}. Worky sammelt jetzt Ideen für dich …` : `Fertig: ${result.folder}`);
       location.reload();
     } catch (error) {
       say(error.message, true);
