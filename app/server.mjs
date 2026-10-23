@@ -16,6 +16,7 @@ import { createBackups } from './sicherung.mjs';
 import { createOwnTemplates } from './eigene-vorlagen.mjs';
 import { createMaterial } from './material.mjs';
 import { createNightShift } from './nachtschicht.mjs';
+import { createStarterHelp } from './starthilfe.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 // ===== Projekte: Workflow arbeitet immer im gerade gewählten Projekt =====
@@ -55,6 +56,8 @@ const HOST = '127.0.0.1';
 const tools = createTools({ dataDir: DATA_DIR, gitCommand: GIT_COMMAND });
 const backups = createBackups({ dataDir: DATA_DIR, appDir: HERE });
 const material = createMaterial();
+// Ideen-Starthilfe (Ausbau 2026-10-23): Inspiration für neue Projekte, siehe starthilfe.mjs
+const starterHelp = createStarterHelp(DATA_DIR, (prompt) => askClaudeText(prompt, 'medium'));
 const ownTemplates = createOwnTemplates({ dataDir: DATA_DIR, gitCommand: GIT_COMMAND, slug: (name, taken) => projectSlug(name, taken) });
 // Eigener Port, damit die alte IE Werkstatt (4173) während des Umzugs parallel laufen kann
 const PORT = Number(process.env.WORKFLOW_PORT || 4180);
@@ -1921,7 +1924,12 @@ async function createProject(data) {
   projectStore.projects.push(project);
   writeProjects(projectStore);
   console.log(`Neues Projekt angelegt: ${name} (${folder}), Git: ${git}`);
-  return { project, files, git, rojo };
+  // Mit Beschreibung sammelt Worky gleich im Hintergrund Ideen (Starthilfe unter „Ideen“)
+  let starthilfe = false;
+  if (description && process.env.WORKFLOW_TESTKOPIE !== '1') {
+    try { starterHelp.start(starterProject(project), description); starthilfe = true; } catch (error) { console.error(`Starthilfe: ${error.message}`); }
+  }
+  return { project, files, git, rojo, starthilfe };
 }
 
 // Ordner prüfen, bevor er ein Projekt wird: muss es geben, kein Laufwerk (C:\) und nicht Workflow selbst
@@ -2027,7 +2035,7 @@ async function handleProjects(request, response, pathname) {
   if (pathname === '/api/projekte/anlegen') {
     try {
       const result = await createProject(data);
-      return sendJson(response, 200, { ...listing(), added: result.project.id, folder: result.project.root, files: result.files, git: result.git, rojo: result.rojo });
+      return sendJson(response, 200, { ...listing(), added: result.project.id, folder: result.project.root, files: result.files, git: result.git, rojo: result.rojo, starthilfe: result.starthilfe });
     } catch (error) {
       return sendJson(response, error.status || 500, { error: error.message || 'Das Projekt konnte nicht angelegt werden.' });
     }
@@ -2088,7 +2096,7 @@ async function runLearningRound(data) {
 // ===== Worky verbessert sich selbst (Paket 5) =====
 // Verbesserungs-Runde: liest 👎 und abgebrochene Läufe und schlägt Regeln, Fähigkeiten (Skills) oder App-Verbesserungen
 // vor. App-Verbesserungen baut Worky nur in der Testkopie (testkopie.mjs), Timo probiert sie aus und entscheidet.
-const APP_SUMMARY = 'Projektliste und neue Projekte aus Vorlagen; Chat mit Worky (Schnell = nur lesen, Gründlich = Claude Code mit Skills, Spezialisten, Freigabe-Karten); Roblox Studio, Blender, Rojo, GitHub Desktop und Obsidian per Knopf; Aufgaben, Änderungen mit Rückgängig, Fehler-Wächter, Prompt-Ersteller, Seite „Worky lernt“ mit Daumen und Vorschlägen; Prüfung nach jeder Änderung (Hook), Roblox-Doku lokal, Lune-Rechentests, Browser-Spiel- und Godot-Selbsttest, Sicherung, Projekt-Status auf den Karten, eigene Vorlagen, Tastenkürzel, Update-Hinweis, Tages-Runde; Nacht-Schicht (Aufgabenliste, nachts in eigener Arbeitskopie, morgens Pull Request) und Material-Ordner (material/ mit Vorschau und Beschreibungen).';
+const APP_SUMMARY = 'Projektliste und neue Projekte aus Vorlagen; Chat mit Worky (Schnell = nur lesen, Gründlich = Claude Code mit Skills, Spezialisten, Freigabe-Karten); Roblox Studio, Blender, Rojo, GitHub Desktop und Obsidian per Knopf; Aufgaben, Änderungen mit Rückgängig, Fehler-Wächter, Prompt-Ersteller, Seite „Worky lernt“ mit Daumen und Vorschlägen; Prüfung nach jeder Änderung (Hook), Roblox-Doku lokal, Lune-Rechentests, Browser-Spiel- und Godot-Selbsttest, Sicherung, Projekt-Status auf den Karten, eigene Vorlagen, Tastenkürzel, Update-Hinweis, Tages-Runde; Nacht-Schicht (Aufgabenliste, nachts in eigener Arbeitskopie, morgens Pull Request) und Material-Ordner (material/ mit Vorschau und Beschreibungen); Ideen-Starthilfe beim Anlegen eines Projekts (ähnliche Spiele, erste Schritte, Ideen, Start-Prompts).';
 let improving = false;
 async function runImproveRound() {
   if (improving) throw Object.assign(new Error('Worky denkt gerade schon nach.'), { status: 409 });
@@ -2290,6 +2298,22 @@ async function handleNightShift(request, response, pathname, url) {
   }
 }
 
+// ===== Ideen-Starthilfe (Ausbau 2026-10-23), siehe starthilfe.mjs =====
+function starterProject(project) {
+  return { id: project.id, name: project.name, kind: project.kind, kindLabel: PROJECT_KINDS[project.kind] || 'Spiel', root: project.root };
+}
+async function handleStarterHelp(request, response, pathname) {
+  try {
+    if (request.method === 'GET' && pathname === '/api/starthilfe') return sendJson(response, 200, { ...await starterHelp.get(starterProject(PROJECT)), description: PROJECT.description || '' });
+    if (request.method !== 'POST' || pathname !== '/api/starthilfe/sammeln') return sendJson(response, 405, { error: 'Diese Anfrage ist nicht erlaubt.' });
+    if (request.headers.origin !== `http://${HOST}:${PORT}`) return sendJson(response, 403, { error: 'Die Starthilfe geht nur über die Workflow-Seite.' });
+    const data = await readJson(request);
+    return sendJson(response, 200, starterHelp.start(starterProject(PROJECT), data.wunsch || PROJECT.description || ''));
+  } catch (error) {
+    return sendJson(response, error.status || 500, { error: error.message || 'Das hat nicht geklappt.' });
+  }
+}
+
 // ===== Material-Ordner (Ausbau 2026-10-22), siehe material.mjs =====
 async function handleMaterial(request, response, pathname, url) {
   try {
@@ -2484,6 +2508,7 @@ const server = createServer(async (request, response) => {
   }
   if (request.method === 'GET' && pathname.startsWith('/entwuerfe/')) return serveMockup(request, response, pathname);
   if (pathname === '/api/material' || pathname.startsWith('/api/material/')) return handleMaterial(request, response, pathname, requestUrl);
+  if (pathname === '/api/starthilfe' || pathname.startsWith('/api/starthilfe/')) return handleStarterHelp(request, response, pathname);
   if (request.method === 'GET' && (pathname === '/spiel' || pathname.startsWith('/spiel/'))) {
     if (pathname === '/spiel') { response.writeHead(302, { Location: '/spiel/' }); return response.end(); }
     return serveGame(request, response, pathname);

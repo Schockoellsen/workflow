@@ -251,6 +251,18 @@ form.addEventListener('submit', (event) => {
   showToast('Idee gespeichert — noch nicht freigegeben.');
 });
 
+// Andere Bereiche (z. B. die Starthilfe) können eine Idee auf den Parkplatz legen
+window.workflowAddIdea = (title, details = '') => {
+  const clean = String(title || '').trim().slice(0, 120);
+  if (!clean) return false;
+  if (ideas.some((idea) => idea.title === clean)) { showToast('Diese Idee steht schon auf deiner Liste.'); return false; }
+  ideas.unshift({ id: crypto.randomUUID(), title: clean, details: String(details || '').trim().slice(0, 600), date: shortDate(), status: 'idee' });
+  saveAll();
+  render();
+  showToast('Idee gespeichert — noch nicht freigegeben.');
+  return true;
+};
+
 ideaList.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-id]');
   if (!button) return;
