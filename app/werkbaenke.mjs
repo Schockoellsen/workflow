@@ -49,6 +49,7 @@ export function createWorkbenches({ dataDir, gitCommand, ghCommand, runClaude, p
       for (const bench of benches) {
         if (bench.status === 'arbeitet') Object.assign(bench, { status: 'bereit', message: 'Workflow wurde beendet, während Worky hier gearbeitet hat. Was schon geändert war, liegt in der Werkbank. Schreib „mach weiter“.' });
         if (bench.status === 'laedt') Object.assign(bench, { status: 'bereit' });
+        if (!bench.folder || !existsSync(bench.folder)) Object.assign(bench, { message: 'Die Kopie für diesen Worky wurde nicht fertig angelegt. Räum ihn mit 🗑 weg und leg ihn neu an.' });
       }
       return { benches };
     } catch {
@@ -108,47 +109,65 @@ export function createWorkbenches({ dataDir, gitCommand, ghCommand, runClaude, p
   const slugOf = (name) => name.toLocaleLowerCase('de').replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30) || 'werkbank';
 
-  async function create(project, rawName) {
+  // Anlegen läuft im Hintergrund: Die Anfrage kommt sofort zurück, die Seite fragt den Stand ab.
+  // So hält kein langes git fetch eine Verbindung des Browsers fest (sonst hängen z. B. die Freigabe-Karten).
+  function create(project, rawName, firstTask) {
     if (disabled) throw fail('Die Testkopie hat keine Werkbänke.');
     const name = String(rawName || '').trim().replace(/\s+/g, ' ').slice(0, 30);
     if (!name) throw fail('Gib der Werkbank einen kurzen Namen, z. B. „Höhle“ oder „HUD“.', 400);
     if (state.benches.filter((bench) => bench.project === project.id).length >= MAX_BENCHES) {
       throw fail(`Höchstens ${MAX_BENCHES} Werkbänke pro Projekt. Räum erst eine fertige weg.`);
     }
+    if (state.benches.some((bench) => bench.project === project.id && bench.name.toLocaleLowerCase('de') === name.toLocaleLowerCase('de'))) {
+      throw fail(`Es gibt schon einen Worky „${name}“. Nimm einen anderen Namen oder schreib dem vorhandenen.`);
+    }
     const root = path.resolve(project.root);
     if (!existsSync(path.join(root, '.git'))) throw fail('Der Projektordner ist kein Git-Ordner. Werkbänke brauchen Git (für die eigene Kopie und den Zweig).');
+    const bench = {
+      id: randomUUID(), name, project: project.id, projectName: project.name, root, folder: '', branch: '', base: '',
+      status: 'laedt', message: 'Workflow legt die Kopie deines Projekts an. Das kann bei großen Projekten ein, zwei Minuten dauern …',
+      sessionId: null, messages: [], createdAt: new Date().toISOString()
+    };
+    state.benches.push(bench);
+    save();
+    void prepare(bench, String(firstTask || '').trim()).catch((error) => {
+      Object.assign(bench, { status: 'bereit', message: `Die Kopie ließ sich nicht anlegen: ${error.message}. Räum diesen Worky mit 🗑 weg und versuch es nochmal.` });
+      save();
+    });
+    return bench;
+  }
+
+  async function prepare(bench, firstTask) {
+    const root = bench.root;
     // Vom neuesten Stand auf GitHub aus arbeiten, ohne Internet vom lokalen main
     const fetched = await git(root, ['fetch', 'origin', 'main'], 45_000);
     let base = '';
     for (const candidate of [fetched.ok ? 'origin/main' : '', 'main', 'master', 'HEAD'].filter(Boolean)) {
       if ((await git(root, ['rev-parse', '--verify', '--quiet', `${candidate}^{commit}`])).ok) { base = candidate; break; }
     }
-    if (!base) throw fail('Im Projekt gibt es noch keinen Commit, von dem die Werkbank ausgehen kann.');
+    if (!base) throw new Error('im Projekt gibt es noch keinen Commit, von dem die Werkbank ausgehen kann');
     // Freien Ordner- und Zweignamen suchen (auch auf GitHub darf der Zweig noch nicht existieren)
-    const slug = slugOf(name);
+    const slug = slugOf(bench.name);
     const remote = fetched.ok ? await git(root, ['ls-remote', '--heads', 'origin', `claude/werkbank-${slug}*`], 30_000) : { output: '' };
     const taken = (branch, folder) => existsSync(folder)
-      || state.benches.some((bench) => bench.branch === branch || path.resolve(bench.folder) === path.resolve(folder))
+      || state.benches.some((other) => other !== bench && (other.branch === branch || (other.folder && path.resolve(other.folder) === path.resolve(folder))))
       || remote.output.split(/\r?\n/).some((line) => line.endsWith(`refs/heads/${branch}`));
     let suffix = '';
     for (let n = 2; taken(`claude/werkbank-${slug}${suffix}`, `${root}-werkbank-${slug}${suffix}`); n += 1) suffix = `-${n}`;
-    const branch = `claude/werkbank-${slug}${suffix}`;
-    const folder = `${root}-werkbank-${slug}${suffix}`;
-    const bench = {
-      id: randomUUID(), name, project: project.id, projectName: project.name, root, folder, branch, base,
-      status: 'laedt', sessionId: null, messages: [], createdAt: new Date().toISOString()
-    };
-    state.benches.push(bench);
+    Object.assign(bench, { branch: `claude/werkbank-${slug}${suffix}`, folder: `${root}-werkbank-${slug}${suffix}`, base });
     save();
-    const added = await git(root, ['worktree', 'add', '--detach', folder, base], 180_000);
+    const added = await git(root, ['worktree', 'add', '--detach', bench.folder, base], 180_000);
     if (!added.ok) {
-      state.benches = state.benches.filter((item) => item.id !== bench.id);
-      save();
-      throw fail(`Die Kopie für die Werkbank ließ sich nicht anlegen: ${added.output.slice(-300)}`, 500);
+      const folder = bench.folder;
+      bench.folder = '';
+      if (existsSync(folder)) await git(root, ['worktree', 'remove', '--force', folder], 60_000);
+      await git(root, ['worktree', 'prune']);
+      throw new Error(added.output.slice(-300) || 'git worktree add ist fehlgeschlagen');
     }
-    bench.status = 'bereit';
+    if (!state.benches.includes(bench)) return; // inzwischen weggeräumt
+    Object.assign(bench, { status: 'bereit', message: '' });
     save();
-    return bench;
+    if (firstTask) send(bench.id, firstTask);
   }
 
   // ---------- Auftrag ----------
@@ -298,6 +317,11 @@ export function createWorkbenches({ dataDir, gitCommand, ghCommand, runClaude, p
   async function remove(id, sure) {
     const bench = find(id);
     if (running.has(id) || bench.status === 'arbeitet' || bench.status === 'laedt') throw fail('Worky arbeitet an dieser Werkbank noch. Erst stoppen.');
+    if (!bench.folder) {
+      state.benches = state.benches.filter((item) => item.id !== id);
+      save();
+      return { removed: true };
+    }
     if (!sure && existsSync(bench.folder)) {
       const files = await changedFiles(bench.folder);
       if (files.length) throw fail(`In der Werkbank ${files.length === 1 ? "ist 1 Änderung" : `sind ${files.length} Änderungen`} noch nicht hochgeladen. Drück erst „Fertig“ oder bestätige, dass sie verloren gehen dürfen.`, 428);

@@ -2373,8 +2373,7 @@ async function handleWorkbenches(request, response, pathname, url) {
     if (pathname === '/api/werkbaenke/anlegen') {
       const project = projectStore.projects.find((item) => item.id === (data.projekt || PROJECT?.id));
       if (!project) return sendJson(response, 404, { error: 'Wähle zuerst ein Projekt.' });
-      const bench = await workbenches.create(project, data.name);
-      if (typeof data.auftrag === 'string' && data.auftrag.trim()) workbenches.send(bench.id, data.auftrag);
+      workbenches.create(project, data.name, typeof data.auftrag === 'string' ? data.auftrag : '');
     } else if (pathname === '/api/werkbaenke/senden') workbenches.send(id, data.text);
     else if (pathname === '/api/werkbaenke/stoppen') workbenches.stop(id);
     else if (pathname === '/api/werkbaenke/fertig') await workbenches.finish(id);
