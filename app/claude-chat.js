@@ -231,8 +231,16 @@ async function askProvider(provider, message, contextNotes, live = null, retried
   }
   let result;
   if (canStream && response.ok && (response.headers.get('Content-Type') || '').includes('ndjson')) {
-    const final = await readAnswerStream(response, live);
+    let streamed = false;
+    const watched = { ...live, onDelta(piece) { streamed = true; live.onDelta?.(piece); }, onTool(name) { streamed = true; live.onTool?.(name); } };
+    const final = await readAnswerStream(response, watched);
     if (final.type === 'error') {
+      // Spezialist mit altem gemerkten Lauf (z. B. Bauer von gestern, zu voll zum Fortsetzen): bricht er ab, bevor er
+      // etwas getan hat, einmal frisch ohne den alten Lauf starten, statt gleich an Claude abzugeben
+      if (agent && sessionId && !retried && !streamed && !final.checkpoint) {
+        agentSessions[agent.id] = null;
+        return askProvider(provider, message, contextNotes, live, true);
+      }
       const failure = new Error(final.error || labelOf(provider) + ' konnte nicht antworten.');
       failure.checkpoint = final.checkpoint || null;
       throw failure;
@@ -683,6 +691,8 @@ async function sendWorkyMessage(message, forcedLead, images = []) {
       leadChip.textContent = labelOf(lead) + ' · nicht verfügbar';
       leadChip.className = 'worky-chip failed';
       leadChip.title = error.message || '';
+      // Grund sichtbar machen (vorher nur beim Drüberfahren mit der Maus)
+      if (fallback && error.message) workyChip(bubble.team, 'Grund: ' + String(error.message).slice(0, 140), 'failed').title = error.message;
       if (lead === 'codex') codexReady = false;
       if (!fallback) throw error;
       lead = fallback;
