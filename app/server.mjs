@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createConnection } from 'node:net';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
@@ -16,6 +16,7 @@ import { createBackups } from './sicherung.mjs';
 import { createOwnTemplates } from './eigene-vorlagen.mjs';
 import { createMaterial } from './material.mjs';
 import { createNightShift } from './nachtschicht.mjs';
+import { createWorkbenches } from './werkbaenke.mjs';
 import { createStarterHelp } from './starthilfe.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -564,22 +565,47 @@ async function openObsidianVault() {
   return path.basename(DOCS_ROOT);
 }
 
+// Unter Windows startet Claude über claude.cmd (cmd.exe). child.kill() beendet nur cmd.exe, Claude selbst lief
+// weiter (Stopp tat nichts, nach dem Schließen von Workflow liefen alle Workys unsichtbar weiter und der PC hing).
+// Darum immer den ganzen Prozessbaum beenden und laufende Claude-Prozesse merken.
+const liveChildren = new Set();
+function killTree(child) {
+  if (!child?.pid || child.exitCode !== null) return;
+  if (process.platform === 'win32') {
+    try { spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore', timeout: 10_000 }); } catch { /* weiter mit kill */ }
+  }
+  try { child.kill(); } catch { /* schon beendet */ }
+}
+function killAllChildren() {
+  for (const child of liveChildren) killTree(child);
+  liveChildren.clear();
+}
+// Fenster zu (SIGHUP unter Windows), Strg+C oder Beenden: keine Workys zurücklassen
+for (const signalName of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK']) {
+  try { process.on(signalName, () => { killAllChildren(); process.exit(0); }); } catch { /* Signal gibt es hier nicht */ }
+}
+process.on('exit', killAllChildren);
+
 // onLine (optional): bekommt jede fertige Ausgabezeile sofort (für Live-Text im Chat)
 // cwd: sonst das gewählte Projekt (die Testkopie baut in ihrem eigenen Ordner); track = Projektwechsel solange sperren
 function runClaude(args, input = '', timeoutMs = 120_000, onLine = null, signal = undefined, cwd = PROJECT_ROOT, track = true) {
   const run = new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(new Error('Abgebrochen.'));
     const child = spawn(CLAUDE_COMMAND, args, {
-      signal,
       cwd,
       env: tools.pathEnv(),
       shell: process.platform === 'win32' && CLAUDE_COMMAND.toLowerCase().endsWith('.cmd'),
       windowsHide: true,
       stdio: ['pipe', 'pipe', 'pipe']
     });
+    liveChildren.add(child);
+    const onAbort = () => { killTree(child); reject(new Error('Abgebrochen.')); };
+    signal?.addEventListener('abort', onAbort, { once: true });
+    const forget = () => { liveChildren.delete(child); signal?.removeEventListener('abort', onAbort); };
     let stdout = '';
     let stderr = '';
     const timer = setTimeout(() => {
-      child.kill();
+      killTree(child);
       reject(new Error('Zeitgrenze erreicht, der Auftrag lief zu lange. Was bis dahin geändert wurde, bleibt. Schreib einfach „mach weiter“, dann arbeitet Worky an der Stelle weiter.'));
     }, timeoutMs);
 
@@ -606,10 +632,12 @@ function runClaude(args, input = '', timeoutMs = 120_000, onLine = null, signal 
     child.stderr.on('data', (chunk) => { stderr = (stderr + chunk).slice(-8000); });
     child.on('error', (error) => {
       clearTimeout(timer);
+      forget();
       reject(error);
     });
     child.on('close', (code) => {
       clearTimeout(timer);
+      forget();
       takeLine(pending);
       pending = '';
       stdout = kept.join('\n');
@@ -2331,6 +2359,59 @@ async function handleNightShift(request, response, pathname, url) {
   }
 }
 
+// ===== Werkbänke (Ausbau 2026-10-23): bis zu drei Worky-Aufträge gleichzeitig, siehe werkbaenke.mjs =====
+// Eigene MCP-Konfiguration je Werkbank: nur die Freigabe (Karte zeigt „Werkbank …“), kein Studio, kein Blender und
+// keine Werkstatt-Werkzeuge (die arbeiten im Projektordner, nicht in der Kopie). Liegt im Temp-Ordner (Freigabe-Token).
+async function prepareBenchMcpConfig(benchId, provider) {
+  const file = path.join(tmpdir(), `workflow-werkbank-${process.pid}-${benchId.slice(0, 8)}.json`);
+  const servers = {
+    werkstatt_freigabe: {
+      type: 'stdio', command: process.execPath, args: [APPROVAL_MCP_SCRIPT],
+      env: { IE_APPROVAL_TOKEN: APPROVAL_TOKEN, IE_WORKSHOP_URL: `http://${HOST}:${PORT}`, IE_APPROVAL_PROVIDER: provider.slice(0, 40) }
+    }
+  };
+  await writeFile(file, JSON.stringify({ mcpServers: servers }, null, 2), { encoding: 'utf8', mode: 0o600 });
+  return file;
+}
+
+const workbenches = createWorkbenches({
+  dataDir: DATA_DIR, gitCommand: GIT_COMMAND, ghCommand: GH_COMMAND,
+  projects: () => projectStore.projects, hookSettings: prepareHookSettings, docsFolder: () => (tools.docsReady() ? tools.docsFolder() : ''),
+  mcpConfig: prepareBenchMcpConfig, approvalTool: APPROVAL_TOOL,
+  runClaude: (args, input, timeoutMs, onLine, signal, cwd) => runClaude(args, input, timeoutMs, onLine, signal, cwd, true),
+  context: async (project, folder) => {
+    const list = await material.summary(folder).catch(() => '');
+    const shared = learning.sharedKnowledge(1500);
+    return [
+      ...(list ? ['MATERIAL VON TIMO (Ordner material/):', list] : []),
+      ...(shared ? ['WISSEN AUS ALLEN PROJEKTEN (nur als Kontext):', shared] : [])
+    ].join('\n');
+  }
+});
+
+async function handleWorkbenches(request, response, pathname, url) {
+  if (request.method === 'GET' && pathname === '/api/werkbaenke') return sendJson(response, 200, workbenches.overview(url.searchParams.get('projekt') || PROJECT?.id || ''));
+  if (request.method !== 'POST') return sendJson(response, 405, { error: 'Diese Anfrage ist nicht erlaubt.' });
+  if (request.headers.origin !== `http://${HOST}:${PORT}`) return sendJson(response, 403, { error: 'Werkbänke gehen nur über die Workflow-Seite.' });
+  let data;
+  try { data = await readJson(request); } catch (error) { return sendJson(response, 400, { error: error.message }); }
+  try {
+    const id = String(data.id || '');
+    if (pathname === '/api/werkbaenke/anlegen') {
+      const project = projectStore.projects.find((item) => item.id === (data.projekt || PROJECT?.id));
+      if (!project) return sendJson(response, 404, { error: 'Wähle zuerst ein Projekt.' });
+      workbenches.create(project, data.name, typeof data.auftrag === 'string' ? data.auftrag : '');
+    } else if (pathname === '/api/werkbaenke/senden') workbenches.send(id, data.text);
+    else if (pathname === '/api/werkbaenke/stoppen') workbenches.stop(id);
+    else if (pathname === '/api/werkbaenke/fertig') await workbenches.finish(id);
+    else if (pathname === '/api/werkbaenke/wegraeumen') await workbenches.remove(id, data.sicher === true);
+    else return sendJson(response, 404, { error: 'Unbekannte Werkbank-Anfrage.' });
+    return sendJson(response, 200, workbenches.overview(data.projekt || PROJECT?.id || ''));
+  } catch (error) {
+    return sendJson(response, error.status || 500, { error: error.message || 'Das hat nicht geklappt.' });
+  }
+}
+
 // ===== Ideen-Starthilfe (Ausbau 2026-10-23), siehe starthilfe.mjs =====
 function starterProject(project) {
   return { id: project.id, name: project.name, kind: project.kind, kindLabel: PROJECT_KINDS[project.kind] || 'Spiel', root: project.root };
@@ -2535,6 +2616,7 @@ const server = createServer(async (request, response) => {
   if (request.method === 'GET' && pathname === '/api/workflow/version') return sendJson(response, 200, await workflowVersion(requestUrl.searchParams.get('frisch') === '1'));
   if (pathname === '/api/werkzeuge' || pathname.startsWith('/api/werkzeuge/')) return handleTools(request, response, pathname, requestUrl);
   if (pathname === '/api/nachtschicht' || pathname.startsWith('/api/nachtschicht/')) return handleNightShift(request, response, pathname, requestUrl);
+  if (pathname === '/api/werkbaenke' || pathname.startsWith('/api/werkbaenke/')) return handleWorkbenches(request, response, pathname, requestUrl);
   // Ohne gewähltes Projekt weiß keine KI, wo sie arbeiten soll
   if (!PROJECT && pathname.startsWith('/api/') && !pathname.endsWith('/status') && pathname !== '/api/agents' && pathname !== '/api/approvals') {
     return sendJson(response, 409, { error: 'Wähle zuerst oben ein Projekt aus (oder füge eins hinzu).' });
