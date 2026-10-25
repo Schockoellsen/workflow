@@ -243,6 +243,7 @@ async function askProvider(provider, message, contextNotes, live = null, retried
       }
       const failure = new Error(final.error || labelOf(provider) + ' konnte nicht antworten.');
       failure.checkpoint = final.checkpoint || null;
+      failure.emptyRun = final.emptyRun === true;
       throw failure;
     }
     result = final;
@@ -255,7 +256,11 @@ async function askProvider(provider, message, contextNotes, live = null, retried
     else if (provider === 'claude') claudeSessionId = null;
     return askProvider(provider, message, contextNotes, live, true);
   }
-  if (!response.ok) throw new Error(result.error || labelOf(provider) + ' konnte nicht antworten.');
+  if (!response.ok) {
+    const failure = new Error(result.error || labelOf(provider) + ' konnte nicht antworten.');
+    failure.emptyRun = result.emptyRun === true;
+    throw failure;
+  }
   if (agent) { agentSessions[agent.id] = result.sessionId || null; return result; }
   if (provider === 'codex') codexSessionId = result.sessionId;
   else if (provider === 'openrouter') openRouterSessionId = result.sessionId;
@@ -634,6 +639,25 @@ function addSelfTestButton(bubble) {
   bubble.item.append(row);
 }
 
+// Knopf unter einem Lauf ohne Ergebnis: schickt den gleichen Auftrag (mit den gleichen Bildern) nochmal ab
+function addRetryButton(bubble, message, images = []) {
+  const row = document.createElement('div');
+  row.className = 'worky-quick worky-after';
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = '🔁 Nochmal versuchen';
+  button.addEventListener('click', () => {
+    if (chatBusy) return;
+    pendingImages.splice(0, pendingImages.length, ...images);
+    renderPendingImages();
+    claudeQuestion.value = message;
+    claudeForm.requestSubmit();
+    row.remove();
+  });
+  row.append(button);
+  bubble.item.append(row);
+}
+
 // Worky: Die passende KI (meist Claude oder ein Claude-Spezialist) antwortet und baut.
 async function sendWorkyMessage(message, forcedLead, images = []) {
   const bubble = workyBubble();
@@ -685,6 +709,8 @@ async function sendWorkyMessage(message, forcedLead, images = []) {
       result = await askProvider(lead, leadMessage, contextNotes, live);
     } catch (error) {
       if (error.name === 'AbortError') throw error;
+      // Lauf ohne Ergebnis: keine andere KI, sondern unten „Nochmal versuchen“ mit dem gleichen Auftrag
+      if (error.emptyRun) throw error;
       // Fällt die gewählte KI aus (z. B. Codex-Kontingent leer), übernimmt die nächste bereite KI.
       const fallback = (forcedLead ? [] : ['claude', 'antigravity', 'openrouter']).find((name) => name !== lead
         && (name === 'claude' ? claudeReady : name === 'antigravity' ? agyReady : openRouterReady));
@@ -806,6 +832,7 @@ async function sendWorkyMessage(message, forcedLead, images = []) {
     bubble.item.classList.add('error');
     bubble.body.textContent = error.message || 'Worky konnte gerade nicht antworten.';
     if (error.checkpoint) addUndoButton(bubble, error.checkpoint);
+    if (error.emptyRun) addRetryButton(bubble, message, images);
     setClaudeStatus('error', 'Worky: Anfrage fehlgeschlagen');
     if (claudeReady) window.workflowLearn?.afterError(bubble, message, error.message || '');
   } finally {

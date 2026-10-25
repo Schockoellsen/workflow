@@ -586,6 +586,13 @@ for (const signalName of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK']) {
 }
 process.on('exit', killAllChildren);
 
+// Lauf endet ohne Ergebnis (Claude meldet „success“, aber keine Antwort): emptyRun zeigt im Chat „Nochmal versuchen“
+function emptyRunError() {
+  const error = new Error('Der Lauf wurde ohne Ergebnis beendet: Claude Code hat aufgehört, ohne eine Antwort zu liefern. Was bis dahin geändert wurde, bleibt. Starte den gleichen Auftrag einfach nochmal.');
+  error.emptyRun = true;
+  return error;
+}
+
 // onLine (optional): bekommt jede fertige Ausgabezeile sofort (für Live-Text im Chat)
 // cwd: sonst das gewählte Projekt (die Testkopie baut in ihrem eigenen Ordner); track = Projektwechsel solange sperren
 function runClaude(args, input = '', timeoutMs = 120_000, onLine = null, signal = undefined, cwd = PROJECT_ROOT, track = true) {
@@ -656,6 +663,9 @@ function runClaude(args, input = '', timeoutMs = 120_000, onLine = null, signal 
           console.error(`Claude-Lauf beendet mit Code ${code}${subtype ? ` (${subtype})` : ''}: ${redactSensitiveText(stderr.slice(-400))}`);
           if (subtype === 'error_max_turns') {
             reject(new Error('Der Auftrag war zu groß für einen Durchgang (Schrittgrenze erreicht). Was bis dahin geändert wurde, bleibt. Schreib einfach „mach weiter“, dann arbeitet Worky an der Stelle weiter.'));
+          } else if (subtype === 'success') {
+            // Claude meldet „success“, liefert aber nichts: kein Anmelde- oder Internet-Problem, einfach nochmal starten
+            reject(emptyRunError());
           } else {
             const hint = subtype || redactSensitiveText(stderr.trim().split(/\r?\n/).pop() || '').slice(0, 200);
             reject(new Error(`Claude Code konnte die Anfrage nicht abschließen${hint ? ` (${hint})` : ''}. Prüfe Anmeldung, Kontingent und Internetverbindung.`));
@@ -1719,6 +1729,7 @@ async function handleChat(request, response, preParsed) {
     }).filter(Boolean);
     const result = events.find((event) => event.type === 'result');
     if (!result || typeof result.result !== 'string') throw new Error('Claude hat keine lesbare Antwort zurückgegeben.');
+    if (!result.is_error && result.subtype === 'success' && !result.result.trim()) throw emptyRunError();
     if (result.is_error) {
       const detail = result.result.toLowerCase();
       if (detail.includes('not logged in') || detail.includes('authentication')) {
@@ -1750,7 +1761,7 @@ async function handleChat(request, response, preParsed) {
     // Für die Verbesserungs-Runde: abgebrochene Läufe merken (Timos Stopp-Knopf zählt nicht)
     if (!abort.signal.aborted) { learning.addFailure(learningProject(), message, error.message || ''); maybeImprove(); }
     const checkpoint = await finishCheckpoint();
-    return reply(502, { error: error.message || 'Claude ist gerade nicht erreichbar.', memorySaved, checkpoint });
+    return reply(502, { error: error.message || 'Claude ist gerade nicht erreichbar.', memorySaved, checkpoint, ...(error.emptyRun ? { emptyRun: true } : {}) });
   }
 }
 
