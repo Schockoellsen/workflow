@@ -193,7 +193,7 @@ html[data-theme="dark"] .md a{color:#a8abff}
 
 /* Rückgängig-Knopf unter einer Antwort */
 .worky-undo{align-items:center}
-.worky-undo-note{font-size:12px;color:var(--ls-muted)}
+.worky-undo-note,.worky-hint{font-size:12px;color:var(--ls-muted)}
 
 /* Live-Checkliste (Workys Aufgabenliste) */
 .worky-todos{margin:6px 0 10px;padding:10px 12px;border:1px solid var(--ls-line-2);border-radius:10px;background:var(--ls-panel-2)}

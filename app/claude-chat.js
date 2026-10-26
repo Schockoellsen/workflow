@@ -297,6 +297,60 @@ function classifyWorkyMessage(message) {
   return DEEP_WORDS.test(text) ? 'deep' : 'fast';
 }
 
+// Reine Frage ohne Bauauftrag (z. B. „ist baba bau ein bauer“): landet wegen Wörtern wie „bau“ im Gründlich-Modus,
+// braucht aber keine Werkzeuge. Dann schlägt Worky ⚡ Schnell vor (nur Vorschlag, Timo klickt selbst).
+const QUESTION_START = /^\s*(ist|sind|war|waren|hat|haben|gibt es|was|wer|wie|wo|woher|wann|warum|wieso|weshalb|welche[rsmn]?|stimmt|heißt|bedeutet|weißt du|kennst du)\b/i;
+const ACTION_WORDS = /\b(kannst du|könntest du|würdest du|bitte|mach|mache|fehler|nicht|kaputt|bug|f9)\b/i;
+function looksLikePureQuestion(message) {
+  const text = String(message || '').trim();
+  if (!text || text.length > 200 || text.includes('\n')) return false;
+  return (QUESTION_START.test(text) || text.endsWith('?')) && !ACTION_WORDS.test(text);
+}
+
+// Knöpfe unter einer Antwort, die sofort eine neue Nachricht schicken. Läuft Worky noch, wird der Lauf
+// gestoppt und die Nachricht danach geschickt. override: { lead, depth } für genau diese eine Nachricht.
+let workyOverride = null;
+let workyQueued = null;
+function resendWorky(text, override) {
+  workyOverride = override || null;
+  if (chatBusy) { workyQueued = text; workyAbort?.abort(); return; }
+  claudeQuestion.value = text;
+  claudeForm.requestSubmit();
+}
+
+function addFastSuggestion(bubble, message, note) {
+  const row = document.createElement('div');
+  row.className = 'worky-quick worky-after worky-fast-hint';
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = '⚡ Schnell antworten';
+  button.title = 'Schickt die Frage nochmal im Modus Schnell (ohne Werkzeuge, meist in Sekunden)';
+  button.addEventListener('click', () => { row.remove(); resendWorky(message, { depth: 'fast' }); });
+  const hint = document.createElement('span');
+  hint.className = 'worky-hint';
+  hint.textContent = note;
+  row.append(button, hint);
+  bubble.item.append(row);
+}
+
+// Zeitgrenze erreicht: „Mach weiter“ per Klick statt selbst tippen, beim selben Spezialisten
+function addContinueButton(bubble, lead, message) {
+  const row = document.createElement('div');
+  row.className = 'worky-quick worky-after';
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = '▶️ Mach weiter';
+  button.addEventListener('click', () => {
+    if (chatBusy) return;
+    row.remove();
+    bubble.item.querySelector(':scope > .worky-fast-hint')?.remove();
+    resendWorky('Mach weiter', { lead: String(lead).startsWith('agent:') ? lead : undefined, depth: 'deep' });
+  });
+  row.append(button);
+  bubble.item.append(row);
+  if (looksLikePureQuestion(message)) addFastSuggestion(bubble, message, 'War nur eine Frage? Dann lieber schnell fragen.');
+}
+
 const TOOL_LABELS = { Read: 'liest eine Datei', Glob: 'sucht Dateien', Grep: 'durchsucht den Code', Edit: 'ändert eine Datei', Write: 'schreibt eine Datei', Bash: 'führt einen Befehl aus', PowerShell: 'führt einen Befehl aus', Agent: 'holt einen Spezialisten', Task: 'holt einen Spezialisten', Skill: 'nutzt einen Skill', TodoWrite: 'plant die Schritte', WebSearch: 'sucht im Web', WebFetch: 'liest eine Webseite' };
 function toolLabel(name) {
   if (TOOL_LABELS[name]) return TOOL_LABELS[name];
@@ -635,7 +689,7 @@ function addSelfTestButton(bubble) {
 }
 
 // Worky: Die passende KI (meist Claude oder ein Claude-Spezialist) antwortet und baut.
-async function sendWorkyMessage(message, forcedLead, images = []) {
+async function sendWorkyMessage(message, forcedLead, images = [], forcedDepth) {
   const bubble = workyBubble();
   bubble.item.classList.add('thinking');
   const claudeReady = claudeStatus.dataset.state !== 'offline';
@@ -646,7 +700,8 @@ async function sendWorkyMessage(message, forcedLead, images = []) {
   const assemblyLine = /^\s*Fließband/i.test(message);
   let lead = choice.key === 'codex' && codexReady && !explainIntent && !assemblyLine ? 'codex' : 'claude';
   // Schnell-Weiche: einfache Fragen gehen direkt an Claude (schnelles Modell), Aufgaben an den Spezialisten
-  const depth = forcedLead ? 'deep' : classifyWorkyMessage(message);
+  const depth = forcedDepth || (forcedLead ? 'deep' : classifyWorkyMessage(message));
+  if (forcedDepth === 'fast') lead = 'claude';
   // Aufgaben brauchen Werkzeuge (Befehle, Dateien ändern): nur Claude-Spezialisten können das. Passt keiner, macht es
   // Worky selbst als voller Claude Code und holt sich bei Bedarf einen Spezialisten. Antigravity-Rollen nur bei Direktwahl.
   const specialist = forcedLead || depth === 'fast' ? null : pickWorkyAgent(message, (agent) => agent.engine === 'claude');
@@ -667,6 +722,10 @@ async function sendWorkyMessage(message, forcedLead, images = []) {
   try {
     const fastLane = depth === 'fast' && lead === 'claude';
     workyChip(bubble.team, fastLane ? '⚡ Schnell-Antwort' : '🔬 Gründlich', 'done');
+    // Reine Frage im Gründlich-Modus: ⚡ Schnell anbieten (Klick stoppt diesen Lauf und fragt schnell)
+    if (!fastLane && !forcedLead && !forcedDepth && !images.length && looksLikePureQuestion(message)) {
+      addFastSuggestion(bubble, message, 'Klingt nach einer reinen Frage. Im Modus Schnell kommt die Antwort meist in Sekunden.');
+    }
     let contextNotes = [...selectedContextNotes];
     if (!fastLane) {
       bubble.body.textContent = 'Ich suche passende Notizen im Tresor …';
@@ -806,6 +865,7 @@ async function sendWorkyMessage(message, forcedLead, images = []) {
     bubble.item.classList.add('error');
     bubble.body.textContent = error.message || 'Worky konnte gerade nicht antworten.';
     if (error.checkpoint) addUndoButton(bubble, error.checkpoint);
+    if (/Zeitgrenze erreicht/.test(error.message || '')) addContinueButton(bubble, lead, message);
     setClaudeStatus('error', 'Worky: Anfrage fehlgeschlagen');
     if (claudeReady) window.workflowLearn?.afterError(bubble, message, error.message || '');
   } finally {
@@ -832,7 +892,9 @@ async function sendClaudeMessage(event) {
     claudeQuestion.disabled = true;
     workyAbort = new AbortController();
     setWorkyRunning(true);
-    try { await sendWorkyMessage(message, agentOf(activeProvider) ? activeProvider : undefined, images); } finally {
+    const override = workyOverride;
+    workyOverride = null;
+    try { await sendWorkyMessage(message, override?.lead || (agentOf(activeProvider) ? activeProvider : undefined), images, override?.depth); } finally {
       workyAbort = null;
       setWorkyRunning(false);
       saveWorkyChat();
@@ -840,6 +902,13 @@ async function sendClaudeMessage(event) {
       claudeSend.disabled = false;
       claudeQuestion.disabled = false;
       claudeQuestion.focus();
+    }
+    // Knopf während des Laufs gedrückt (z. B. ⚡ Schnell antworten): jetzt die gemerkte Nachricht schicken
+    if (workyQueued) {
+      const queued = workyQueued;
+      workyQueued = null;
+      claudeQuestion.value = queued;
+      claudeForm.requestSubmit();
     }
     return;
   }
