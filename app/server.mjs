@@ -569,6 +569,8 @@ async function openObsidianVault() {
 // weiter (Stopp tat nichts, nach dem Schließen von Workflow liefen alle Workys unsichtbar weiter und der PC hing).
 // Darum immer den ganzen Prozessbaum beenden und laufende Claude-Prozesse merken.
 const liveChildren = new Set();
+// Lauf endet mit „success“, aber ohne Antwort (der Chat bietet dazu „Nochmal versuchen“ an)
+const EMPTY_RUN_MESSAGE = 'Der Lauf endete ohne Antwort, das liegt wahrscheinlich nicht an Anmeldung oder Netz. Was bis dahin geändert wurde, bleibt.';
 function killTree(child) {
   if (!child?.pid || child.exitCode !== null) return;
   if (process.platform === 'win32') {
@@ -656,6 +658,9 @@ function runClaude(args, input = '', timeoutMs = 120_000, onLine = null, signal 
           console.error(`Claude-Lauf beendet mit Code ${code}${subtype ? ` (${subtype})` : ''}: ${redactSensitiveText(stderr.slice(-400))}`);
           if (subtype === 'error_max_turns') {
             reject(new Error('Der Auftrag war zu groß für einen Durchgang (Schrittgrenze erreicht). Was bis dahin geändert wurde, bleibt. Schreib einfach „mach weiter“, dann arbeitet Worky an der Stelle weiter.'));
+          } else if (subtype === 'success') {
+            // Claude meldet „success“, liefert aber nichts: Anmeldung oder Netz sind hier nicht schuld
+            reject(new Error(EMPTY_RUN_MESSAGE));
           } else {
             const hint = subtype || redactSensitiveText(stderr.trim().split(/\r?\n/).pop() || '').slice(0, 200);
             reject(new Error(`Claude Code konnte die Anfrage nicht abschließen${hint ? ` (${hint})` : ''}. Prüfe Anmeldung, Kontingent und Internetverbindung.`));
@@ -1726,6 +1731,7 @@ async function handleChat(request, response, preParsed) {
       }
       throw new Error(result.result);
     }
+    if (!result.result.trim()) throw new Error(EMPTY_RUN_MESSAGE);
     const returnedSessionId = typeof result.session_id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(result.session_id)
       ? result.session_id
       : null;

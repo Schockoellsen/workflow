@@ -351,6 +351,23 @@ function addContinueButton(bubble, lead, message) {
   if (looksLikePureQuestion(message)) addFastSuggestion(bubble, message, 'War nur eine Frage? Dann lieber schnell fragen.');
 }
 
+// Lauf endete ohne Antwort: denselben Auftrag beim selben Spezialisten nochmal schicken (Änderungen bleiben)
+function addRetryButton(bubble, lead, message, depth) {
+  const row = document.createElement('div');
+  row.className = 'worky-quick worky-after';
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = '🔁 Nochmal versuchen';
+  button.title = 'Schickt denselben Auftrag nochmal, Worky arbeitet mit dem aktuellen Stand weiter';
+  button.addEventListener('click', () => {
+    if (chatBusy) return;
+    row.remove();
+    resendWorky(message, { lead: String(lead).startsWith('agent:') ? lead : undefined, depth });
+  });
+  row.append(button);
+  bubble.item.append(row);
+}
+
 const TOOL_LABELS = { Read: 'liest eine Datei', Glob: 'sucht Dateien', Grep: 'durchsucht den Code', Edit: 'ändert eine Datei', Write: 'schreibt eine Datei', Bash: 'führt einen Befehl aus', PowerShell: 'führt einen Befehl aus', Agent: 'holt einen Spezialisten', Task: 'holt einen Spezialisten', Skill: 'nutzt einen Skill', TodoWrite: 'plant die Schritte', WebSearch: 'sucht im Web', WebFetch: 'liest eine Webseite' };
 function toolLabel(name) {
   if (TOOL_LABELS[name]) return TOOL_LABELS[name];
@@ -866,6 +883,7 @@ async function sendWorkyMessage(message, forcedLead, images = [], forcedDepth) {
     bubble.body.textContent = error.message || 'Worky konnte gerade nicht antworten.';
     if (error.checkpoint) addUndoButton(bubble, error.checkpoint);
     if (/Zeitgrenze erreicht/.test(error.message || '')) addContinueButton(bubble, lead, message);
+    if (/Lauf endete ohne Antwort/.test(error.message || '')) addRetryButton(bubble, lead, message, depth);
     setClaudeStatus('error', 'Worky: Anfrage fehlgeschlagen');
     if (claudeReady) window.workflowLearn?.afterError(bubble, message, error.message || '');
   } finally {
