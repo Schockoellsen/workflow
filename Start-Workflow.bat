@@ -21,7 +21,8 @@ powershell.exe -NoProfile -Command "try { $null = Invoke-WebRequest -Uri 'http:/
 if errorlevel 1 (
   echo Starte Workflow aus:
   echo %WORKSHOP_DIR%
-  start "Workflow Server" /D "%WORKSHOP_DIR%" "%NODE_EXE%" --watch server.mjs
+  rem Ohne --watch: sonst startet der Server bei jeder Dateiänderung neu und laufende Antworten reißen ab ("network error")
+  start "Workflow Server" /D "%WORKSHOP_DIR%" "%NODE_EXE%" server.mjs
   for /L %%i in (1,1,10) do (
     powershell.exe -NoProfile -Command "try { $null = Invoke-WebRequest -Uri 'http://127.0.0.1:4180/' -UseBasicParsing -TimeoutSec 1; exit 0 } catch { exit 1 }" >nul 2>&1 && goto :open
     timeout /t 1 /nobreak >nul
